@@ -50,9 +50,9 @@ class Game:
         self.p = p
         c = p.c
         self.c = c
-        diff = c("diff_tab") + difficulty * 4
-        self.walk_period, self.fly_period, self.stun_time, self.start_lives = (
-            p[diff + k] for k in range(4))
+        diff = c("diff_tab") + difficulty * 5
+        (self.walk_period, self.walk_steps, self.fly_period, self.stun_time,
+         self.start_lives) = (p[diff + k] for k in range(5))
         self.lives = self.start_lives if lives is None else lives
         self.score = 0
         self.room = room
@@ -228,9 +228,10 @@ class Game:
                 e["y"] = (e["base"] + self.sine[e["phase"]]) & 0xFF
             else:
                 e["phase"] += 1
-                if e["phase"] < self.walk_period:
+                if e["phase"] >= self.walk_period:
+                    e["phase"] = 0
+                if e["phase"] >= self.walk_steps:
                     continue
-                e["phase"] = 0
                 self.bounce(e)
 
     def step(self, ctl):

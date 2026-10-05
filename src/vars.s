@@ -168,9 +168,10 @@ txt_gc          .byte ?
 txt_rs          .byte ?
 txt_bits        .byte ?
 
-;; --- the difficulty: four bytes, in diff_tab's order ---
+;; --- the difficulty: five bytes, in diff_tab's order ---
 difficulty      .byte ?
 walk_period     .byte ?
+walk_steps      .byte ?
 fly_period      .byte ?
 stun_time       .byte ?
 start_lives     .byte ?

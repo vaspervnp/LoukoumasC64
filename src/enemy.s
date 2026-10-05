@@ -143,13 +143,19 @@ enemy_fly
         rts
 
 enemy_walk
+        ;; en_phase counts round walk_period frames, and the walker steps on
+        ;; the first walk_steps of them: one in two on easy, two in three on
+        ;; medium, every frame on hard (difficulty_apply, diff_tab).
         inc en_phase,x
         lda en_phase,x
-        cmp walk_period         ; which is what the difficulty moves
-        bcs +
-        rts
-+       lda #0
+        cmp walk_period
+        bcc +
+        lda #0
         sta en_phase,x
++       cmp walk_steps
+        bcc +
+        rts
++
 
 ;; One step along the patrol, turning at either end. Past the left end can
 ;; wrap below 0, which reads as past the right - so which end it went past

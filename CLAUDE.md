@@ -272,7 +272,10 @@ with the C64's machine strip, loading box and features) and
 is a poke (`--poke cat_lives=1@5`, which `mkscript.py` turns into a write at
 the start of that frame). The manual's facts are the C64's, not the CPC's:
 the border flashes only when the milk gives a life back, a stunned enemy
-blinks grey, and easy and medium slow the cast to a third and a half.
+blinks grey, and easy and medium slow walkers to a half and two thirds and
+flyers to a third and a half, the CPC's rates (`diff_tab`: a walker steps on
+`walk_steps` frames of every `walk_period`, because on hard it steps every
+frame, where the CPC's stepped every other).
 
 ## 11. Conventions
 

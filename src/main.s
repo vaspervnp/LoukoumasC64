@@ -248,14 +248,18 @@ DIFF_EASY       = 0
 DIFF_MEDIUM     = 1
 DIFF_HARD       = 2
 DIFF_COUNT      = 3
-DIFF_SIZE       = 4
+DIFF_SIZE       = 5
 
-;; walk period, fly period, flop stun, lives. Hard is the CPC's game as it
-;; always was; the other two step the cast less often rather than less far.
+;; walk period, walk steps, fly period, flop stun, lives. Hard is the CPC's
+;; game as it always was; the other two step the cast less often rather than
+;; less far, at the CPC's rates: walkers at a half and two thirds of hard
+;; (a walker steps on walk_steps frames of every walk_period), flyers at a
+;; third and a half. A C64 walker on hard steps every frame, where the CPC's
+;; stepped every other, so two thirds cannot be a period on its own.
 diff_tab
-        .byte 3, 3, 200, 9      ; easy: four seconds flat out, nine lives
-        .byte 2, 2, 150, 6      ; medium
-        .byte 1, 1, 100, 3      ; hard
+        .byte 2, 1, 3, 200, 9   ; easy: four seconds flat out, nine lives
+        .byte 3, 2, 2, 150, 6   ; medium
+        .byte 1, 1, 1, 100, 3   ; hard
 diff_tab_end
         .cerror diff_tab_end-diff_tab != DIFF_COUNT*DIFF_SIZE
         .cerror MSG_DIFFMED != MSG_DIFFEASY+1 || MSG_DIFFHARD != MSG_DIFFEASY+2
@@ -315,9 +319,11 @@ draw_difficulty
         jmp print_msg_centre
 
 difficulty_apply
-        lda difficulty
+        lda difficulty          ; times DIFF_SIZE, five
         asl
         asl
+        clc
+        adc difficulty
         tax
         ldy #0
 -       lda diff_tab,x

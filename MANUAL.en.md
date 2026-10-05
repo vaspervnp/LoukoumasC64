@@ -234,8 +234,8 @@ and right (`O` and `P`) to change it and fire (`SPACE`) to accept.
 
 | | Lives | Enemies | The belly-flop stun lasts |
 |---|:---:|---|---|
-| **EASY** | 9 | A third of the speed | Four seconds |
-| **MEDIUM** | 6 | Half speed | Three seconds |
+| **EASY** | 9 | Half speed; things that fly, a third | Four seconds |
+| **MEDIUM** | 6 | Two thirds; things that fly, half | Three seconds |
 | **HARD** | 3 | Full speed | Two seconds |
 
 **HARD is the game as it was designed** — three lives, and everything moving at
