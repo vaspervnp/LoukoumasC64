@@ -66,7 +66,7 @@ HUD_SPLIT_LINE  = FIRST_LINE+HUD_ROWS*8-1       ; 66
 
 ;; The title and the difficulty chooser are the other way up: the picture on
 ;; top and a footer of hires text along the bottom.
-FOOT_ROW        = 19
+FOOT_ROW        = 22
 FOOT_SPLIT_LINE = FIRST_LINE+FOOT_ROW*8-1
 
 ;; --- Sprites ---------------------------------------------------------------

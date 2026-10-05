@@ -63,122 +63,93 @@ main_loop
 ;; ===========================================================================
 ;; The title
 ;;
-;; Until the Koala picture exists (loukc64.md 5.7) the title is a room: the
-;; window and the sofa from the lounge, a shelf, the cat on it, and the name
-;; drawn large over it with a shadow. The footer is a band of hires text
-;; split off the bottom of the bitmap, which is the CPC's footer without the
-;; clearing it needed.
+;; The CPC's painting - the cat caught at the open Pitsos, a quarter past three
+;; - converted to a multicolour bitmap by tools/mktitle64.py, with the name
+;; and the subtitle in it. Cell rows 0-4 carry the lettering and exist once
+;; per language; rows 5-20 are one picture. Row 21 is empty, for the split,
+;; and rows 22-24 are the footer, in hires text.
 ;; ===========================================================================
 
-TITLE_Y         = 10
-SUBTITLE_Y      = 38
-TITLE_SHELF_Y   = 17*8+5                ; the cat stands here
-ROW_PRESS       = 20
-ROW_LANG        = 22
+ROW_PRESS       = 22
+ROW_LANG        = 23
 ROW_CREDIT      = 24
-ROW_DIFF        = 20
-ROW_DIFFNAME    = 22
+ROW_DIFF        = 22
+ROW_DIFFNAME    = 23
 ROW_DIFFHINT    = 24
 BLINK_BIT       = $20                   ; frame_count bit: 0.64 s each way
+
+        .cerror TITLE_ROWS >= FOOT_ROW, "the title picture runs into the footer"
+
+;; copy - src, dst, length: ptr, sptr and tmp set, and copy_n called.
+copy    .macro src, dst, len
+        lda #<\src
+        sta ptr
+        lda #>\src
+        sta ptr+1
+        lda #<\dst
+        sta sptr
+        lda #>\dst
+        sta sptr+1
+        lda #<\len
+        sta tmp
+        lda #>\len
+        sta tmp+1
+        jsr copy_n
+        .endm
 
 title_draw
         lda #0
         sta screen_on
-        sta spr_en
+        sta spr_en              ; the cat is in the picture now
         jsr wait_frame
         jsr dl_title
         lda #0
         sta clip_top
         sta shake_y
         jsr clear_all
-        lda #LIGHT_INDOOR
+        lda #TITLE_BG
         sta bg_col
         sta border_col
-
-        lda #PROP_WINDOW        ; a room for the name to hang in
-        sta prop_id
-        lda #106
-        sta prop_x
-        lda #60
-        sta prop_y
-        jsr draw_prop
-        lda #PROP_SOFA
-        sta prop_id
-        lda #8
-        sta prop_x
-        lda #TITLE_SHELF_Y-44
-        sta prop_y
-        jsr draw_prop
-        lda #0                  ; the shelf, all the way across
-        sta bx
-        lda #SCREEN_W
-        sta bw
-        lda #TITLE_SHELF_Y
-        sta by
-        lda #SHELF_H
-        sta bh
-        lda #2
-        sta bpen
-        jsr fill_box
-        lda #<pick_sausage      ; and what he is here for
-        sta picp
-        lda #>pick_sausage
-        sta picp+1
-        lda #84
-        sta pic_x
-        lda #TITLE_SHELF_Y-PICK_H
-        sta pic_y
-        jsr draw_pic
-
-        lda #<frm_cat_stand     ; the cat
-        sta frmp
-        lda #>frm_cat_stand
-        sta frmp+1
-        lda #0
-        sta spr_n
-        sta spr_grey
-        lda #64
-        sta spr_px
-        lda #TITLE_SHELF_Y-CAT_H
-        sta spr_py
-        jsr spr_pair
-
+        #copy title_bmp, BITMAP+TITLE_BAND*320, (TITLE_ROWS-TITLE_BAND)*320
+        #copy title_scr, BMP_SCREEN+TITLE_BAND*40, (TITLE_ROWS-TITLE_BAND)*40
+        #copy title_col, COLOUR_RAM+TITLE_BAND*40, (TITLE_ROWS-TITLE_BAND)*40
         jsr title_text
         lda #1
         sta screen_on
         rts
 
-;; The parts that change with the language.
+;; The parts that change with the language: the lettering band, the footer.
 title_text
-        ldx #1                  ; the name's band of the bitmap
-        ldy #5
-        jsr clear_cells
-        lda #2
-        sta txt_sx
-        lda #3
-        sta txt_sy
-        lda #TITLE_Y+2          ; the shadow, one pixel right and two down
-        sta txt_y
-        lda #4
-        sta txt_pen
-        lda #MSG_TITLE1
-        jsr big_text_centre
-        dec txt_y
-        dec txt_y
-        dec txt_x
-        lda #2                  ; and the name over it, butter yellow
-        sta txt_pen
-        lda #MSG_TITLE1
-        jsr big_text
-        lda #1
-        sta txt_sx
-        sta txt_sy
-        lda #SUBTITLE_Y
-        sta txt_y
-        lda #1                  ; coral
-        sta txt_pen
-        lda #MSG_TITLE2
-        jsr big_text_centre
+        ldx lang
+        lda title_band_lo,x
+        sta ptr
+        lda title_band_hi,x
+        sta ptr+1
+        lda #<BITMAP
+        sta sptr
+        lda #>BITMAP
+        sta sptr+1
+        lda #<TITLE_BAND*320
+        sta tmp
+        lda #>TITLE_BAND*320
+        sta tmp+1
+        jsr copy_n              ; the band's bitmap; its screen and colour
+        lda #<BMP_SCREEN        ; follow it in the table
+        sta sptr
+        lda #>BMP_SCREEN
+        sta sptr+1
+        lda #TITLE_BAND*40
+        sta tmp
+        lda #0
+        sta tmp+1
+        jsr copy_n
+        lda #<COLOUR_RAM
+        sta sptr
+        lda #>COLOUR_RAM
+        sta sptr+1
+        lda #TITLE_BAND*40
+        sta tmp
+        jsr copy_n
         ;; fall through: the footer
 
 title_footer
@@ -203,12 +174,41 @@ title_footer
         jsr print_msg_centre
         ldx #ROW_CREDIT
         ldy #1
-        lda #15                 ; the credit quieter
+        lda #0                  ; the credit quieter: black on the grey
         jsr text_ink
         ldx #ROW_PRESS
         ldy #1
         lda #7                  ; and the call to action yellow
         jmp text_ink
+
+;; copy_n - tmp (16 bits) bytes from (ptr) to (sptr). Leaves ptr just past
+;; what it read.
+copy_n
+        ldy #0
+        ldx tmp+1
+        beq _tail
+-       lda (ptr),y
+        sta (sptr),y
+        iny
+        bne -
+        inc ptr+1
+        inc sptr+1
+        dex
+        bne -
+_tail   ldx tmp
+        beq _done
+-       lda (ptr),y
+        sta (sptr),y
+        iny
+        dex
+        bne -
+        tya                     ; ptr past the tail too, for the next table
+        clc
+        adc ptr
+        sta ptr
+        bcc _done
+        inc ptr+1
+_done   rts
 
 title_loop
         jsr wait_frame
@@ -344,6 +344,7 @@ difficulty_apply
         .include "sprites.s"
         .include "art.s"
         .include "rooms.s"
+        .include "title.s"
 
 code_end
         .cerror code_end > CODE_LIMIT, "the code and tables run into the workspace"

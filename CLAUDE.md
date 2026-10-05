@@ -33,7 +33,7 @@ reintroduced "for safety":
 |---|---|
 | `$02-$5F` | zero page: pointers, the allocator's state, the cat |
 | `$FD-$FF` | `JMP irq_handler` — the IRQ vector points here (see below) |
-| `$0801-` | BASIC stub, code, read-only tables, then the sprite blocks and font on their way to bank 3 |
+| `$0801-` | BASIC stub, code, read-only tables (the title picture is 10 KB of them), then the sprite blocks and font on their way to bank 3 |
 | `$9000-$BFFF` | workspace (`vars.s`, `.virtual` — not in the file) |
 | `$C000` / `$C400` | text screen / bitmap screen RAM |
 | `$C800-$CFFF` | the font (charset), 55 glyphs |
@@ -138,6 +138,20 @@ of room 1 byte for byte.
   drawn into the bitmap through `fill_box`, a run of font pixels per box.
 - One program, both languages; it starts in Greek and `L` switches on the title.
 
+## 7b. The title picture
+
+`tools/mktitle64.py` turns the CPC's painting (`assets/art/title.jpg`) into
+`src/title.s`: cropped, scaled to 160x168 (cell rows 0-20), every pixel to
+its nearest C64 colour, then each cell keeps the three colours (besides the
+shared background, chosen to make the whole picture cheapest) that cost
+least. The name and subtitle go in first as locked pixels, so the lettering
+never loses a cell to the painting; the subtitle has a black rim to read over
+the wall tiles. Rows 0-4 exist once per language (10.4 KB in all), rows 5-20
+once. Row 21 is empty and the footer is rows 22-24 (`FOOT_ROW`): the split's
+line must be blank, and so must bitmap byte 7, which text mode reads there.
+Judge it with `--preview` (build/title-<lang>.png, 2:1) or in VICE - its
+yellow is warmer than the preview's.
+
 ## 8. Testing
 
 - `make check`: `tools/c64check.py` — the static room check, the room-1 render
@@ -182,7 +196,7 @@ was generated once by `tools/convrooms.py` from the CPC build and is hand-edited
 source now — `make` never regenerates it, and re-running the converter throws
 away every `(C64: ...)` edit.
 
-exomizer is not installed here; the `.prg` is 18 KB unpacked.
+exomizer is not installed here; the `.prg` is 29 KB unpacked.
 
 ## 11. Conventions
 
