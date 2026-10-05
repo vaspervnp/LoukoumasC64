@@ -203,7 +203,7 @@ scripted run reads the same input on both. `c64run.py --ntsc` runs one.
 
 ## 10. Building
 
-`make` (64tass) → `build/loukoumas.prg` and `.d64` (c1541). Generated sources
+`make` (64tass) → `build/loukoumas.prg` and `.d64` (`tools/d64.py`). Generated sources
 are committed; `make gen` regenerates them (Python 3 + Pillow). `src/rooms.s`
 was generated once by `tools/convrooms.py` from the CPC build and is hand-edited
 source now — `make` never regenerates it, and re-running the converter throws
@@ -211,13 +211,16 @@ away every `(C64: ...)` edit.
 
 ### The disc (loukc64.md 10)
 
-`tools/mkdisk64.py` builds `build/loukoumas.d64` with two files:
+`tools/mkdisk64.py` builds `build/loukoumas.d64` with three files:
 
-- `LOUKOUMAS` (`src/loader.s`, 8 KB): moves its working part to `$C000`,
-  unpacks the REVIVE8BIT splash (the CPC's `revive8b.scr`, converted by
-  `tools/mksplash64.py` - a mode 0 screen is a multicolour bitmap's shape)
-  into bank 3 and shows it, KERNAL-loads `LOUKC64`, banks the ROMs out,
+- `LOUKOUMAS` (`src/loader.s`, 6 blocks): the only file the KERNAL must
+  load, so it is kept small. It copies its last part (the game's unpacking)
+  to `$C000`, blanks the screen, starts the fast loader, loads `SPLASH`,
+  unpacks it into bank 3 and shows it, loads `LOUKC64`, banks the ROMs out,
   unpacks the game to `$0801` and jumps to its `start`.
+- `SPLASH`: the REVIVE8BIT splash (the CPC's `revive8b.scr`, converted by
+  `tools/mksplash64.py` - a mode 0 screen is a multicolour bitmap's shape),
+  packed, loading at `$1000`.
 - `LOUKC64`: the game packed by `tools/pack64.py`, with a load address that
   ends it at `$BFFF`. Its start overlaps the end of the unpacked game; that is
   safe while no output byte lands on stream still to be read, which
@@ -226,9 +229,29 @@ away every `(C64: ...)` edit.
 
 exomizer is not installed, so `pack64.py` is a byte-aligned LZ of our own
 (66% on the game; the title painting is most of what does not pack) with an
-80-byte decruncher, `src/unpack.s`. The loader uses the KERNAL's serial LOAD,
-so it works on any drive; with true drive emulation the title is up about
-90 seconds after `RUN`. A fast loader is the next step.
+80-byte decruncher, `src/unpack.s`.
+
+**The fast loader** (`src/fastload.s`, read its header): drive code uploaded
+with M-W and started with M-E finds `SPLASH` and `LOUKC64` in the directory
+itself and sends them a sector at a time, two bits per ATN toggle on CLK and
+DATA. The C64 clocks it and only ever reads late, never early, so badlines
+(the splash is on screen) do not matter and nothing counts cycles. A drive
+whose ROM does not say "1541" at `$E5C5` (SD2IEC, 1571, VICE's virtual drive)
+gets the KERNAL's LOAD instead - checked in VICE for the 1571 and the virtual
+drive.
+
+- With true drive emulation the game is in memory about 23 s after power-on
+  (PAL and NTSC), against about 100 s with the KERNAL's load.
+- A sector takes 45 ms to send; the DOS wants a read job in long before its
+  sector comes round, so the two files are written with an interleave of 12
+  (`tools/d64.py` writes the disc, not c1541, for that). At 10, the DOS's,
+  every other sector is missed by a turn; at 11 it works in VICE with under
+  2 ms in hand; 12 tolerates 8 ms of added delay.
+- The drive writes ATNA ($1800 bit 4) equal to ATN in every value it puts on
+  the bus, or the 1541's hardware ATN acknowledge pulls DATA low.
+- VICE breakpoints set while autostart is still typing can be lost; time the
+  disc with `-limitcycles N -exitscreenshot`, or connect the monitor about
+  1 s into a warp run and break in the drive (`device 8:`).
 
 - **64tass `-a` makes upper-case ASCII shifted PETSCII.** A file name written
   `"LOUKC64"` came out `$CC $CF...` and the drive said FILE NOT FOUND; write

@@ -4,17 +4,21 @@
 ;; The CPC's loader (louk.bas) puts the REVIVE8BIT screen up and then runs the
 ;; game. This does the same on the C64 (loukc64.md 10):
 ;;
-;;   1. its own working part goes to $C000, out of the way of everything;
-;;   2. the splash is unpacked and shown - a multicolour bitmap in VIC bank 3,
-;;      where the game's own bitmap will be;
-;;   3. the KERNAL loads LOUKC64, the packed game, which sits so that it ends
-;;      at $BFFF - above the end of the game it unpacks to, so the output
-;;      never reaches the stream it is reading;
+;;   1. its last part - the game's unpacking - goes to $C000, out of the way
+;;      of the game it unpacks over this;
+;;   2. SPLASH, the splash packed, is loaded, unpacked and shown - a
+;;      multicolour bitmap in VIC bank 3, where the game's own bitmap will be;
+;;   3. LOUKC64, the packed game, is loaded. It sits so that it ends at $BFFF,
+;;      above the end of the game it unpacks to, so the output never reaches
+;;      the stream it is reading;
 ;;   4. ROMs out, the game unpacked to $0801, and its own start runs.
 ;;
-;; It uses the KERNAL's serial LOAD, so it works with any drive and any
-;; SD2IEC; a fast loader is the next step if the wait wants shortening.
-;; Assembled on its own: 64tass -D GAME_START=... -D GAME_LZ_AT=...
+;; The two files come through the fast loader (fastload.s) on a 1541, and
+;; through the KERNAL's LOAD on anything else - an SD2IEC, a 1581. This part
+;; is kept small, because the KERNAL loads it whatever the drive.
+;;
+;; Assembled on its own by tools/mkdisk64.py:
+;;   64tass -D GAME_START=... -D GAME_LZ_AT=... -D SPLASH_LZ_AT=...
 ;; ===========================================================================
 
         .cpu "6502"
@@ -24,11 +28,15 @@
 lz_src          = $f9           ; KERNAL-free zero page: the RS-232 pointers
 lz_dst          = $fb
 lz_m            = $fd
+fl_p            = $f7           ; the fast loader's pointer: RS-232 too
+fl_acc          = $02           ; and its byte being put together
 SPLASH_TMP      = $9000         ; the splash unpacks here, then is spread out
 
 SETLFS          = $ffba
 SETNAM          = $ffbd
 LOAD            = $ffd5
+
+FILE_NAMES      = ("splash", "loukc64")   ; in the order they are loaded
 
         * = $0801
         .word (+), 2026
@@ -36,27 +44,29 @@ LOAD            = $ffd5
 +       .word 0
 
 boot
-        sei
-        ldx #0                  ; the working part, to $C000
+        ldx #0                  ; the last part, to $C000
 -       lda body_store,x
-        sta body,x
-        lda body_store+$100,x
-        sta body+$100,x
+        sta loaded,x
         inx
         bne -
-        jmp body
+        stx $d020               ; a black screen until there is a picture
+        stx $d011
 
-splash_lz
-        .binary "../build/splash.lz"
+        ldx $ba                 ; the drive it was loaded from
+        bne +
+        ldx #8
++       stx fl_dev
+        jsr fast_load
+        ror fl_slow             ; bit 7: not a 1541
 
-body_store
-        .logical $c000
-body
+        ldx #0                  ; the splash
+        jsr get_file
+        sei
         lda #$35                ; KERNAL and BASIC out while it unpacks: the
         sta $01                 ; decruncher reads back what it wrote
-        lda #<splash_lz
+        lda #<SPLASH_LZ_AT
         sta lz_src
-        lda #>splash_lz
+        lda #>SPLASH_LZ_AT
         sta lz_src+1
         lda #<SPLASH_TMP
         sta lz_dst
@@ -100,24 +110,54 @@ body
         lda #0
         sta $d015
 
-        lda #$37                ; the KERNAL back, and its interrupt
+        ldx #1                  ; and the game
+        jsr get_file
+        jmp loaded
+
+;; get_file - file X of FILE_NAMES to its load address, the fast way or the
+;; KERNAL's.
+get_file
+        bit fl_slow
+        bmi +
+        jmp fast_get
++       lda #$37                ; the KERNAL back, and its interrupt
         sta $01
         cli
-        lda #name_end-name
-        ldx #<name
-        ldy #>name
+        lda name_len,x
+        pha
+        ldy name_hi,x
+        lda name_lo,x
+        tax
+        pla
         jsr SETNAM
-        ldx $ba                 ; the drive it was loaded from
-        bne +
-        ldx #8
-+       lda #1
+        lda #1
+        ldx fl_dev
         ldy #1                  ; to the address in the file
         jsr SETLFS
         lda #0
         jsr LOAD
         bcs failed
+        rts
 
-        sei
+        .include "fastload.s"
+
+fl_dev          .byte 0
+fl_slow         .byte 0
+fl_at           .word 0
+fl_tmp          .word 0
+fl_first        .byte 0
+fl_end          .byte 0
+
+names   .for n in FILE_NAMES
+        .text n
+        .next
+name_len .byte len(FILE_NAMES[0]), len(FILE_NAMES[1])
+name_lo  .byte <names, <(names+len(FILE_NAMES[0]))
+name_hi  .byte >names, >(names+len(FILE_NAMES[0]))
+
+body_store
+        .logical $c000
+loaded  sei
         lda #$35                ; the game's map: RAM, and I/O
         sta $01
         lda #<GAME_LZ_AT
@@ -134,10 +174,10 @@ body
 failed  inc $d020               ; the file is not there: say so, in the border
         jmp failed
 
-name    .text "loukc64"         ; 64tass -a: lower case is PETSCII upper case
-name_end
-
         .include "unpack.s"
-        .cerror * > $c200, "the loader's working part is more than two pages"
+        .cerror * > SECBUF, "the loader runs into the fast loader's sector"
+        .cerror * > $c100, "the loader's last part is more than a page"
         .cerror * > BMP_SCREEN, "the loader runs into the splash's screen"
         .endlogical
+
+        .cerror body_store+$100 > SPLASH_LZ_AT, "the loader runs into where the splash loads"

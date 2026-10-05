@@ -13,7 +13,6 @@
 
 TASS    ?= 64tass
 X64     ?= x64sc
-C1541   ?= c1541
 PYTHON  ?= python3
 
 SRC     := $(wildcard src/*.s)
@@ -30,8 +29,9 @@ all: $(PRG) $(D64)
 $(PRG): $(SRC) | build
 	$(TASS) $(TASSFLAGS) -o $@ -l $(LBL) -L build/loukoumas.lst src/main.s
 
-# The disc: the loader with the splash, and the game packed (tools/mkdisk64.py).
-$(D64): $(PRG) src/loader.s src/unpack.s tools/mkdisk64.py tools/pack64.py \
+# The disc: the loader, the splash and the game packed (tools/mkdisk64.py).
+$(D64): $(PRG) src/loader.s src/unpack.s src/fastload.s tools/mkdisk64.py \
+		tools/pack64.py tools/d64.py \
 		tools/mksplash64.py assets/revive8b.scr
 	$(PYTHON) tools/mkdisk64.py $(PRG) $(LBL)
 

@@ -6,7 +6,7 @@ notes are in `CLAUDE.md`.
 
 ## Build and run
 
-Needs 64tass and VICE (x64sc, c1541); Python 3 with Pillow for the tools.
+Needs 64tass and VICE (x64sc); Python 3 with Pillow for the tools.
 
 ```bash
 make
@@ -22,7 +22,8 @@ make check
 
 `build/loukoumas.prg` is the game, unpacked, for development. The disc,
 `build/loukoumas.d64`, is what to play: `LOAD"*",8` and `RUN` - the loader
-shows the REVIVE8BIT splash while it loads the packed game (`make rundisk`).
+shows the REVIVE8BIT splash while it loads the packed game (`make rundisk`),
+through its own fast loader on a 1541 and the KERNAL's on anything else.
 
 ## Controls
 
@@ -49,5 +50,5 @@ shows the REVIVE8BIT splash while it loads the packed game (`make rundisk`).
 | M7 | text in both languages, title, difficulty, game over, RUN/STOP | done — the title is the CPC's painting as a multicolour bitmap, lettered per language |
 | M8 | SFX and music | done — the CPC's title tune, converted from its Arkos song; checked by pitch from a VICE recording, not yet by ear or on a 6581/8580 |
 | M9 | profiling | `PROFILE=1` build; room 1 peaks at 125 of 312 lines |
-| M10 | .d64, packer, loader, NTSC | done — own LZ packer (66%), a loader showing the REVIVE8BIT splash while the KERNAL loads the game; NTSC. No fast loader yet: about 1.5 minutes on a 1541 |
+| M10 | .d64, packer, loader, NTSC | done — own LZ packer (66%), a loader showing the REVIVE8BIT splash, a fast loader of our own (about 23 s from power-on on a 1541, against 100 s; KERNAL fallback on other drives); NTSC |
 | M11-M12 | manuals, real hardware | not started |
