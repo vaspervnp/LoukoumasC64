@@ -1,0 +1,28 @@
+# loukc64.md M9: the checks on every push. The build and the model checks
+# always run; the VICE ones (make check, make profile) need the C64's ROMs,
+# which some distributions' VICE packages leave out, so they run when the
+# ROMs are there and say so when they are not.
+name: check
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 64tass vice python3-pil xvfb
+      - name: Build
+        run: make
+      - name: Rooms and routes, in the model
+        run: make modelcheck
+      - name: Room 1 and every route, in VICE
+        run: |
+          if ls /usr/share/vice/C64/kernal* /usr/lib/vice/C64/kernal* >/dev/null 2>&1; then
+            xvfb-run -a make check profile
+          else
+            echo "::warning::VICE has no C64 ROMs here; make check and make profile skipped"
+          fi

@@ -44,6 +44,8 @@ R_EXITW         = 15
 R_EXITH         = 16
 R_EXITSHUT      = 17
 R_EXITOPEN      = 18
+EXIT_CELLS      = 224             ; the largest open way out is 221 (c64roomcheck)
+EXIT_ROWS_STEP  = 3               ; cell rows of it put back a frame (exit_step)
 R_STARTX        = 19
 R_STARTY        = 20
 R_MILKX         = 21
@@ -99,6 +101,7 @@ play_room
 play_loop
         jsr wait_frame
         .if PROFILE != 0
+        jsr prof_frame
         jsr prof_start
         .endif
         jsr cat_shadow          ; what the last step worked out, to the
@@ -122,7 +125,8 @@ play_loop
         beq play_loop           ; the last life does not restart it at once
         jmp play_screen
 
-_alive  jsr cat_update
+_alive  jsr exit_step           ; a way out that is opening
+        jsr cat_update
         jsr enemies_update
         jsr check_sausages
         jsr check_enemies
@@ -156,10 +160,34 @@ play_quit
         rts
 
 ;; ---------------------------------------------------------------------------
+;; prof_frame - a frame the loop missed: frame_count moved on by more than one
+;; since the last time round, so the last step's work did not fit in its
+;; frame (loukc64.md M9: no overrun on any route). room_load sets prof_last
+;; when the room is up, so drawing a room is not counted.
+;; ---------------------------------------------------------------------------
+        .if PROFILE != 0
+prof_frame
+        lda frame_count
+        sec
+        sbc prof_last
+        cmp #2
+        bcc +
+        lda cur_room
+        sta prof_over_room
+        inc prof_over
+        bne +
+        dec prof_over           ; stays at 255
++       lda frame_count
+        sta prof_last
+        rts
+        .endif
+
+;; ---------------------------------------------------------------------------
 ;; prof_start / prof_end - in a PROFILE build, how many raster lines one
 ;; frame's logic took, the worst so far in prof_max (loukc64.md 6.4: it is
 ;; measured, not assumed). A PAL frame is 312 lines; the logic has all of it
-;; but the frame interrupt's own.
+;; but the frame interrupt's own, so more than about 300 is an overrun - and
+;; prof_frame counts those directly.
 ;; ---------------------------------------------------------------------------
         .if PROFILE != 0
 prof_line
@@ -179,31 +207,53 @@ prof_line
         lda prof_t+1
         and #1
         sta prof_t+1
-        rts
+        lda prof_t              ; counted from the frame entry's line, so a
+        sec                     ; step that runs past it is still one number
+        sbc #<FRAME_IRQ_LINE
+        sta prof_t
+        lda prof_t+1
+        sbc #>FRAME_IRQ_LINE
+        sta prof_t+1
+        bcs +
+        lda prof_t
+        adc #<312
+        sta prof_t
+        lda prof_t+1
+        adc #>312
+        sta prof_t+1
++       rts
 prof_start
         jsr prof_line
         lda prof_t
         sta prof_s
         lda prof_t+1
         sta prof_s+1
+        lda frame_count
+        sta prof_f
         rts
 prof_end
         jsr prof_line
-        lda prof_t              ; lines = end - start, mod 312
-        sec
-        sbc prof_s
+        lda prof_t              ; lines = end - start, plus 312 for every
+        sec                     ; frame entry in between: a step that does
+        sbc prof_s              ; not fit counts as more than 312
         sta prof_t
         lda prof_t+1
         sbc prof_s+1
         sta prof_t+1
-        bcs +
-        lda prof_t
+        lda frame_count
+        sec
+        sbc prof_f
+        tax
+        beq +
+-       lda prof_t
         clc
         adc #<312
         sta prof_t
         lda prof_t+1
         adc #>312
         sta prof_t+1
+        dex
+        bne -
 +       lda prof_t+1            ; the worst
         cmp prof_max+1
         bcc _done
@@ -360,7 +410,8 @@ _found
 
         jsr draw_props          ; scenery and furniture, everything else on top
         jsr draw_platforms
-        jsr draw_exit
+        jsr exit_draw_prop      ; shut
+        jsr exit_save           ; and a copy of it open
         jsr pickups_init
         jsr draw_hud
 
@@ -376,6 +427,10 @@ _found
 +
         .endif
         jsr wait_frame
+        .if PROFILE != 0
+        lda frame_count         ; the loop's first frame is the next one
+        sta prof_last
+        .endif
         lda #1
         sta screen_on
         rts
@@ -517,9 +572,17 @@ _next   lda (cur_plat),y
 _done   rts
 
 ;; ---------------------------------------------------------------------------
-;; draw_exit - the way out, shut or open.
+;; draw_exit - the way out as it stands: shut, or the copy of it open that
+;; exit_save made. Opening it is the frame the fifth sausage is eaten, and
+;; painting it there through the allocator took nine frames (loukc64.md M9).
 ;; ---------------------------------------------------------------------------
 draw_exit
+        lda level_done
+        bne exit_restore
+        ;; fall through
+
+;; exit_draw_prop - the way out's prop, shut or open by level_done, painted.
+exit_draw_prop
         lda exit_px
         sta prop_x
         lda exit_py
@@ -530,6 +593,154 @@ draw_exit
         lda exit_open
 +       sta prop_id
         jmp draw_prop
+
+;; ---------------------------------------------------------------------------
+;; exit_save - at room load, with the shut way out drawn and no pickup down
+;; yet: measure the cells the open one covers, keep them as they are, draw it
+;; open, keep that, and put the shut one back. The open copy is the room as
+;; c64roomcheck checks it open, cell for cell.
+;; exit_restore - start putting the open copy back. exit_step does it,
+;; EXIT_ROWS_STEP cell rows a frame from the top: the largest way out is 221
+;; cells, three frames' work at once, and a door that opens top to bottom in
+;; a tenth of a second looks like it was meant to. Then, on a frame of its
+;; own, the saucer is drawn again if it is still there and in those cells,
+;; since the copy is of the room before any pickup went down.
+;; ---------------------------------------------------------------------------
+exit_save
+        lda #$ff
+        sta ex_c0
+        sta ex_r0
+        lda #0
+        sta ex_c1
+        sta ex_r1
+        lda #1
+        sta level_done
+        sta fb_measure
+        jsr exit_draw_prop
+        lda #0
+        sta fb_measure
+        lda #<EXIT_SHUT_BUF
+        ldy #>EXIT_SHUT_BUF
+        jsr exit_save_to
+        jsr exit_draw_prop      ; open
+        lda #<EXIT_OPEN_BUF
+        ldy #>EXIT_OPEN_BUF
+        jsr exit_save_to
+        lda #<EXIT_SHUT_BUF
+        sta bufp
+        lda #>EXIT_SHUT_BUF
+        sta bufp+1
+        jsr exit_cells
+        jsr restore_cells
+        lda #0
+        sta level_done
+        sta ex_left             ; no way out of the last room still opening
+        sta ex_milk
+        rts
+
+exit_save_to
+        sta bufp
+        sty bufp+1
+        jsr exit_cells
+        jmp save_cells
+
+exit_cells                      ; sv_* from ex_*
+        lda ex_c0
+        sta sv_cc
+        lda ex_c1
+        sec
+        sbc ex_c0
+        clc
+        adc #1
+        sta sv_nc
+        lda ex_r0
+        sta sv_cr
+        lda ex_r1
+        sec
+        sbc ex_r0
+        clc
+        adc #1
+        sta sv_nr
+        rts
+
+exit_restore
+        lda #<EXIT_OPEN_BUF
+        sta ex_ptr
+        lda #>EXIT_OPEN_BUF
+        sta ex_ptr+1
+        lda #0
+        sta ex_row
+        lda ex_r1
+        sec
+        sbc ex_r0
+        clc
+        adc #1
+        sta ex_left
+        rts
+
+exit_step
+        lda ex_milk
+        bne exit_milk
+        lda ex_left
+        beq _done
+        jsr exit_cells          ; the next rows, from where the last ended
+        lda ex_r0
+        clc
+        adc ex_row
+        sta sv_cr
+        lda ex_left
+        cmp #EXIT_ROWS_STEP
+        bcc +
+        lda #EXIT_ROWS_STEP
++       sta sv_nr
+        clc
+        adc ex_row
+        sta ex_row
+        lda ex_left
+        sec
+        sbc sv_nr
+        sta ex_left
+        lda ex_ptr
+        sta bufp
+        lda ex_ptr+1
+        sta bufp+1
+        jsr restore_cells
+        lda bufp
+        sta ex_ptr
+        lda bufp+1
+        sta ex_ptr+1
+        lda ex_left
+        bne _done
+        lda pick_alive+PICK_MILK
+        sta ex_milk
+_done   rts
+
+exit_milk
+        lda #0
+        sta ex_milk
+        lda pick_alive+PICK_MILK
+        beq _done
+        ldx #PICK_MILK
+        stx pick_i
+        jsr pick_where
+        lda sv_cc               ; does it reach into the way out's cells?
+        cmp ex_c1
+        beq +
+        bcs _done
++       clc
+        adc sv_nc
+        sbc ex_c0               ; carry clear: last column - ex_c0
+        bcc _done
+        lda sv_cr
+        cmp ex_r1
+        beq +
+        bcs _done
++       clc
+        adc sv_nr
+        sbc ex_r0
+        bcc _done
+        jmp pick_draw
+_done   rts
 
 ;; ---------------------------------------------------------------------------
 ;; check_exit - carry set once the cat has stepped into an open way out.
@@ -948,7 +1159,12 @@ big_banner
         lda #2                  ; butter yellow
         sta txt_pen
         pla
-        jmp big_text_centre
+        jsr big_text_centre
+        .if PROFILE != 0
+        lda frame_count         ; drawn once, with the game over: like a
+        sta prof_last           ; room, not counted as a frame missed
+        .endif
+        rts
 
 ;; ===========================================================================
 ;; The cat

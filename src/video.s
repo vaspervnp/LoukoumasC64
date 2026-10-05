@@ -278,8 +278,50 @@ _clipb  lda #SCREEN_H
         sec
         sbc by
         sta bh
-_okb    jmp fill_clipped
+_okb    lda fb_measure
+        bne fill_measure
+        jmp fill_clipped
 _ret    rts
+
+;; fill_measure - the cells a clipped box would paint, added to ex_c0..ex_c1
+;; and ex_r0..ex_r1, and nothing drawn: what exit_save asks of the open way
+;; out before it draws it.
+fill_measure
+        lda bx
+        lsr
+        lsr
+        cmp ex_c0
+        bcs +
+        sta ex_c0
++       lda bx
+        clc
+        adc bw
+        sec
+        sbc #1
+        lsr
+        lsr
+        cmp ex_c1
+        bcc +
+        sta ex_c1
++       lda by
+        lsr
+        lsr
+        lsr
+        cmp ex_r0
+        bcs +
+        sta ex_r0
++       lda by
+        clc
+        adc bh
+        sec
+        sbc #1
+        lsr
+        lsr
+        lsr
+        cmp ex_r1
+        bcc +
+        sta ex_r1
++       rts
 
 fill_clipped
         ldx bpen

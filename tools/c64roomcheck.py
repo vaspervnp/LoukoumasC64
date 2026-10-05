@@ -24,6 +24,7 @@ bitmap, screen and colour RAM as raw bytes for comparison with a memory dump
 taken from VICE (loukc64.md M2: the two renders must agree byte for byte).
 """
 
+import copy
 import os
 import re
 import sys
@@ -98,6 +99,7 @@ class Screen:
         # hold sixteen: None is the background. soft marks a pickup's pixel.
         self.truth = [[None] * SCREEN_W for _ in range(SCREEN_H)]
         self.soft_px = set()
+        self.touched = None     # a set: the cells fill_box paints, when kept
 
     def fill_box(self, bx, by, bw, bh, pen):
         if bw == 0 or bh == 0 or bx >= SCREEN_W:
@@ -132,6 +134,8 @@ class Screen:
                 nmask = mask ^ 0xFF
                 cell = cr * 40 + cc
                 base = cr * 320 + cc * 8
+                if self.touched is not None:
+                    self.touched.add(cell)
                 slot = self.alloc(pen, colour, cell, base, ly0, ly1, nmask)
                 pat = SLOT_PAT[slot] & mask
                 for ly in range(ly0, ly1 + 1):
@@ -274,6 +278,7 @@ def main():
     bad = []
     warn = []
     total_clash = 0
+    exit_cells_max = 0
     global DIST
     DIST = [[p[c("colour_dist") + a * 16 + b] for b in range(16)] for a in range(16)]
 
@@ -311,6 +316,32 @@ def main():
             s.who = "shelf %d..%d at %d" % (x0, x1, y)
             s.fill_box(x0, y, x1 - x0 + 1, shelf_h, 2)
         draw_prop(g("R_EXITSHUT"), g("R_EXITPX"), g("R_EXITPY"))
+
+        # The way out, open, painted over the room as it stands before the
+        # pickups go down: what room_load keeps a copy of (exit_save) and the
+        # fifth sausage puts back. It must not clash either, and its cells
+        # must fit EXIT_BUF.
+        so = copy.deepcopy(s)
+        so.touched = set()
+        draw_prop_on = s
+        s = so
+        draw_prop(g("R_EXITOPEN"), g("R_EXITPX"), g("R_EXITPY"))
+        s = draw_prop_on
+        if not so.touched:
+            fail("the open way out draws nothing")
+        else:
+            ccs = [cl % 40 for cl in so.touched]
+            crs = [cl // 40 for cl in so.touched]
+            ncells = (max(ccs) - min(ccs) + 1) * (max(crs) - min(crs) + 1)
+            exit_cells_max = max(exit_cells_max, ncells)
+            if ncells > c("EXIT_CELLS"):
+                fail("the open way out covers %d cells; EXIT_BUF holds %d"
+                     % (ncells, c("EXIT_CELLS")))
+        open_hard, _ = so.wrong_cells(g("R_LIGHT"))
+        if open_hard:
+            total_clash += len(open_hard)
+            fail("the open way out: %d cells clash: %s" % (len(open_hard), " ".join(
+                "%d,%d" % (cl % 40, cl // 40) for cl in sorted(open_hard)[:12])))
         sa = w("R_SAUS")
         picks = [(p[sa + 2 * k], p[sa + 2 * k + 1], "pick_sausage") for k in range(g("R_NSAUS"))]
         if g("R_MILKX") != c("NO_MILK"):
@@ -406,8 +437,9 @@ def main():
     if bad:
         print("c64roomcheck: %d problems, %d clashing cells" % (len(bad), total_clash))
         sys.exit(1)
-    print("c64roomcheck: %d rooms, no clash, every sausage and way out reachable"
-          " (%d pickups borrow a colour; -v lists them)" % (c("ROOM_COUNT"), len(warn)))
+    print("c64roomcheck: %d rooms, no clash shut or open, every sausage and way out"
+          " reachable (%d pickups borrow a colour; -v lists them); the largest open"
+          " way out is %d cells" % (c("ROOM_COUNT"), len(warn), exit_cells_max))
 
 
 LIGHTS = {}

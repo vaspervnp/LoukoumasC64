@@ -9,7 +9,7 @@ the route, the frame to stop on, and any pokes. It is VICE's own screenshot
 at that frame, border and all, doubled to 768 x 544 so it is the same size
 as the CPC's shots and the manual and cover tools need no telling.
 
-The game starts in Greek; the English shots press L on the title first. The
+The game starts in English; the Greek shots press L on the title first. The
 rooms are shot on hard, the game as designed, along routes the model found
 (tools/c64route.py) - every one is a clean run, so the cat in the picture is
 where a player who knew the room would be.
@@ -65,7 +65,7 @@ def shift(items, by):
 
 def shoot(name, room, route, frame, pokes):
     for lang in ("en", "el"):
-        items = ["LANG@20-21"] if lang == "en" else []
+        items = ["LANG@20-21"] if lang == "el" else []
         if room is None:
             items += shift(route, 0)
             stop, poke = frame, pokes

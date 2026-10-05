@@ -3,6 +3,9 @@
 #   make            build/loukoumas.prg and build/loukoumas.d64
 #   make run        start it in x64sc
 #   make check      the static checks: colour clash and reachability
+#   make profile    every room's route played in VICE: out, and no frame missed
+#   make modelcheck the checks without VICE: clash, reachability, every route
+#                   in the Python model (what CI runs when it has no ROMs)
 #   make shots      screenshots of every room into build/shots/
 #   make manualshots  the manuals' and the inlay's screen shots, into docs/
 #   make covers     the disc inlay, docs/cover-<lang>.png
@@ -25,7 +28,7 @@ LBL     := build/loukoumas.lbl
 
 TASSFLAGS := -C -a -B -Wall -Wno-implied-reg --no-caret-diag
 
-.PHONY: all run rundisk check shots manualshots covers manuals gen clean
+.PHONY: all run rundisk check profile modelcheck shots manualshots covers manuals gen clean
 
 all: $(PRG) $(D64)
 
@@ -49,6 +52,13 @@ rundisk: $(D64)
 
 check: $(PRG)
 	$(PYTHON) tools/c64check.py $(PRG) $(LBL)
+
+profile: $(PRG)
+	$(PYTHON) tools/c64profile.py
+
+modelcheck: $(PRG)
+	$(PYTHON) tools/c64roomcheck.py $(PRG) $(LBL)
+	$(PYTHON) tools/c64profile.py --sim
 
 shots: $(PRG)
 	$(PYTHON) tools/c64shots.py

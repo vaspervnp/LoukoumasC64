@@ -102,6 +102,7 @@ ptab            .fill 256       ; page aligned: which slots a byte shows
 ;; --- the display list and the shadow sprite registers (irq.s) ---
 dl_idx          .byte ?
 dl_count        .byte ?
+irq_d011        .byte ?         ; the split's $D011, the interrupt's own
 dl_line         .fill 4
 dl_d011         .fill 4
 dl_d016         .fill 4
@@ -148,6 +149,15 @@ sv_r            .byte ?
 sv_rn           .byte ?
 sv_c            .byte ?
 sv_cn           .byte ?
+fb_measure      .byte ?         ; fill_box only measures: ex_* (exit_save)
+ex_c0           .byte ?         ; the cells the open way out covers
+ex_c1           .byte ?
+ex_r0           .byte ?
+ex_r1           .byte ?
+ex_row          .byte ?         ; the next row of it exit_step puts back
+ex_left         .byte ?         ; rows still to go; 0: none
+ex_ptr          .word ?         ; where that row is in EXIT_OPEN_BUF
+ex_milk         .byte ?         ; the saucer to draw again, next frame
 clash_count     .word ?
 soft_count      .word ?
 
@@ -242,8 +252,14 @@ prof_max        .word ?
 prof_room       .byte ?
 prof_load       .byte ?
 prof_load_t     .byte ?
+prof_f          .byte ?             ; frame_count at prof_start
+prof_last       .byte ?             ; frame_count at the last play_loop
+prof_over       .byte ?             ; frames the game loop missed (to 255)
+prof_over_room  .byte ?             ; the room of the last one
 
 PICK_BUFS       .fill 7*6*10      ; what each pickup is standing in front of
+EXIT_OPEN_BUF   .fill EXIT_CELLS*10 ; the open way out, drawn at room load
+EXIT_SHUT_BUF   .fill EXIT_CELLS*10 ; and what it was drawn over, for a moment
 work_end
         .endv
         .cerror work_end > WORK_END, "the workspace runs into I/O"

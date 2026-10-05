@@ -42,11 +42,14 @@ start
         sta prof_max
         sta prof_max+1
         sta prof_load
+        sta prof_over
         jsr video_init
         jsr sfx_init
         lda #0
         sta mus_on
-        lda #LANG_EL            ; it is a Greek cat
+        sta fb_measure          ; fill_box draws (exit_save measures)
+        sta ex_left
+        lda #LANG_EN            ; English first; L on the title for Greek
         sta lang
         lda #DIFF_HARD          ; the game as it was before there was a choice,
         sta difficulty          ; so the chooser only ever makes it kinder

@@ -59,9 +59,17 @@ reintroduced "for safety":
   also the frame: shadow sprite registers → VIC, `sfx_update`, `frame_count`.
   - play: 251 hires text (the HUD) → 66 multicolour bitmap
   - title: 251 multicolour bitmap → 202 hires text (the footer)
-- **Split write order is `$D011`, `$D016`, `$D018`.** For a few cycles the VIC
-  is half in one mode; in this order every half-state is blank on the split
-  line. The other order put sprite data on the title's footer line.
+- **Each split's interrupt comes a line early** and waits for its line, so the
+  three writes go in within the split line's first 30 cycles whatever the
+  sprites take. Raised on the split line itself they finished about 66 cycles
+  in, and with sprites on the line slipped into the next one, a badline: the
+  room's first line under the HUD came out black.
+- **Write order: into the bitmap `$D016`, `$D011`, `$D018`; into text `$D011`,
+  `$D016`, `$D018`.** The writes land while the beam draws the split line,
+  and between them the VIC is half in one mode; in these orders every
+  half-state is blank. Bitmap mode first, into the bitmap, showed hires
+  bitmap in the HUD's screen-code colours; multicolour first, into text, put
+  sprite data on the title's footer line.
 - The line a split is written on must be blank in both modes: bitmap rows 0-1
   are kept empty under the HUD (`clip_top`), and every glyph's 8th row is blank.
 - **Never write a colour register that has not changed.** On an 8565 every
@@ -136,7 +144,7 @@ of room 1 byte for byte.
   glyph index is the screen code.
 - HUD and footer: hires text, 40 columns. Big text (title, ΤΕΛΟΣ, ΜΠΡΑΒΟ!) is
   drawn into the bitmap through `fill_box`, a run of font pixels per box.
-- One program, both languages; it starts in Greek and `L` switches on the title.
+- One program, both languages; it starts in English and `L` switches on the title.
 
 ## 7a. Music
 
@@ -177,16 +185,33 @@ yellow is warmer than the preview's.
   builds with `-D SCRIPT=1 -D PROFILE=1`, plays the route in x64sc, halts the
   program at frame N (`script_halt`) and reads memory through the label file.
   Route frames in `--play` are room frames; the menus are 91 frames in front.
-- `PROFILE=1` keeps the worst frame's logic time in raster lines in `prof_max`,
-  and the longest room draw in frames in `prof_load`. Room 1: 125 of 312 lines
-  on a frame a sausage is eaten; rooms draw in 44-53 frames with the screen
-  blanked. Most of that is per-cell overhead in `fill_box` on nested boxes
-  (the door is four full boxes deep); the allocator skips its presence scan
-  for a cell the box covers whole, which gives the same answer.
-- `tools/c64route.py ROOM` (or `--all`, ~30 min) beam-searches the model for
-  a clean run on hard. All 29 rooms have one: 26 found by the search, rooms 6
-  and 9 by hand (`tools/routes.txt`) - both need a belly-flop timed to land on
-  the top shelf, because the canary's arc sweeps it, as it did on the CPC.
+- `PROFILE=1` keeps the worst step's logic time in raster lines in
+  `prof_max` (whole frames included: a step that runs past the next frame
+  entry counts more than 312), every frame the game loop missed in
+  `prof_over`, and the longest room draw in frames in `prof_load`. A room's
+  drawing and the game-over banners are not counted as missed frames.
+- **`make profile` (`tools/c64profile.py`, loukc64.md M9)** plays every room's
+  route in VICE, stopping on the frame the model says the cat goes out on,
+  and fails on a room not finished, a life lost or a frame missed. All 29
+  pass; the worst step is 225 of 312 lines (room 5), most are 180-195. Rooms
+  draw in 41-79 frames with the screen blanked: per-cell overhead in
+  `fill_box`, and the open way out drawn and kept as well (`exit_save`).
+- **The way out opens from a copy.** Painting it open through the allocator
+  on the frame of the fifth sausage took up to nine frames. `room_load` now
+  measures the cells the open exit covers (`fill_box` with `fb_measure`),
+  draws it open, keeps those cells (`EXIT_OPEN_BUF`, up to `EXIT_CELLS`) and
+  puts the shut one back; `exit_step` copies it in three cell rows a frame.
+  `c64roomcheck.py` checks every open exit for clashes and for size.
+- `make modelcheck` is the same without VICE: the room check and every route
+  in the model (`c64profile.py --sim`). CI (`.github/workflows/check.yml`)
+  runs it on every push, and `make check profile` too when its VICE has the
+  C64 ROMs.
+- `tools/routes.txt` holds a clean run on hard for all 29 rooms: rooms 1, 6
+  and 9 by hand - 6 and 9 need a belly-flop timed to land on the top shelf,
+  because the canary's arc sweeps it, as it did on the CPC - and the rest
+  from `tools/c64route.py ROOM` (or `--all`, ~30 min), a beam search on the
+  model. A route goes on pressing after the exit: replay it to the exit
+  frame, not its last input.
 - `tools/vicemon.py` is a bare remote-monitor client for poking at a running
   build; `tools/roomview.py N` draws a room's render with the cell grid.
 - VICE autostart gives up if the monitor breaks in while it injects; the
@@ -267,7 +292,7 @@ needs fpdf2), `make covers` draws the inlay (`tools/mkcover64.py`, the CPC's
 with the C64's machine strip, loading box and features) and
 `make manualshots` retakes the screen shots (`tools/mkshots64.py`). All of
 `docs/` is committed. The shots are scripted runs in VICE through
-`c64run.py`: English presses `L` on the title, rooms are played on hard along
+`c64run.py`: Greek presses `L` on the title, rooms are played on hard along
 `c64route.py` routes (the lounge is `routes.txt`'s room 9), and the game over
 is a poke (`--poke cat_lives=1@5`, which `mkscript.py` turns into a write at
 the start of that frame). The manual's facts are the C64's, not the CPC's:

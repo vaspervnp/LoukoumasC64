@@ -170,6 +170,14 @@ def play(a, lbl):
             elif not started and time.time() > deadline - 110:
                 return None             # ten seconds and not one frame read
         if a.shot:
+            # The monitor stops the machine wherever the beam is, and VICE's
+            # picture of the line it was drawing is half done. Go on to the
+            # bottom border, the frame complete, first.
+            out = mon.cmd("break %x if RL >= $10a && RL < $130" % halt, 0.3)
+            m = re.search(r"BREAK: (\d+)", out)
+            mon.cmd("x", 1.0)
+            if m:
+                mon.cmd("del %s" % m.group(1), 0.3)
             mon.cmd('screenshot "%s" 2' % os.path.abspath(a.shot), 1.0)
         for item in a.save:
             path, lo, hi = item.split(":")

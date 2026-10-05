@@ -223,11 +223,11 @@ box_wardrobeopen
         .byte   0,   0,  50, 132,  3
         .byte   2,   3,  46, 126, 15      ; lit inside
         .byte   2,   0,  46,   5,  3
-        .byte   3,   8,  44,   2,  3      ; the rail
-        .byte   7,  10,   6,  67, 12      ; and what hangs off it
-        .byte  15,  10,   8,  78, 11
-        .byte  25,  10,   7,  63, 14
-        .byte  33,  10,   9,  72, 13
+        .byte   3,   5,  44,   2,  3      ; the rail (C64: up a cell row,
+        .byte   7,   7,   6,  70, 12      ; out of the clothes' top row, where
+        .byte  15,   7,   8,  81, 11      ; white and two garments made four
+        .byte  25,   7,   7,  66, 14      ; colours in a cell; the clothes
+        .byte  33,   7,   9,  75, 13      ; hang from the next line down)
         .byte   2, 129,  46,   3,  3
         .byte $ff
 

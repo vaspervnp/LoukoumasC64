@@ -223,6 +223,8 @@ dl_load
         lda #0
         sta dl_idx
         lda dl_line
+        sec
+        sbc #1
         sta $d012
         cli
         rts
@@ -239,9 +241,13 @@ dl_title_tab
 ;; ---------------------------------------------------------------------------
 ;; irq_handler
 ;;
-;; The split writes have to be in before cycle ~12 of the next line, which is
-;; the badline that fetches the next row's screen RAM. From the interrupt on
-;; line 66 that is about 70 cycles, and the writes below are done in 40.
+;; The split writes have to be in before the next line, a badline that
+;; fetches the next row's screen RAM. Taken from the interrupt on the split
+;; line itself they finished about 66 cycles in - on time only just, and late
+;; whenever sprites on that line took their cycles first: the first line of
+;; the room under the HUD came out black. So the interrupt comes a line early,
+;; the values are worked out, and the three writes go in back to back once
+;; the split line begins, in its first 30 cycles whatever the sprites do.
 ;; ---------------------------------------------------------------------------
 irq_handler
         pha
@@ -251,15 +257,19 @@ irq_handler
         pha
         cld                     ; the NMOS 6502 does not clear D on interrupt,
                                 ; and the main loop does BCD arithmetic
-        ;; The mode first and the memory last. Between the writes the VIC is
-        ;; half in one mode and half in the other for a few cycles, and in
-        ;; this order every half-state shows blank on the split line:
-        ;;  - into the bitmap (HUD, line 66): bitmap mode still pointed at the
-        ;;    text screen reads TEXT_SCREEN rows 8-15, which are empty in play;
-        ;;  - into text (title footer): text mode still pointed at the bitmap
-        ;;    reads glyph 0 from bitmap row 0, which the title leaves empty,
-        ;;    because the screen codes are the colours of bitmap row 18 - 0.
-        ;; The other order showed the sprite blocks on the footer's split.
+        ;; Memory last, and the mode bits in the order that keeps every
+        ;; half-state blank. The writes land on the split line while the beam
+        ;; is drawing it, so between them the VIC shows a mix of two modes:
+        ;;  - into the bitmap (HUD, line 66): multicolour first. Multicolour
+        ;;    text shows the glyphs' 8th line, empty; then bitmap mode still
+        ;;    pointed at the text screen reads its rows 8-15, empty in play;
+        ;;    then the bitmap's own line, empty under the HUD (clip_top).
+        ;;    Bitmap mode first showed hires bitmap for a moment, each cell in
+        ;;    the colours of the HUD's screen codes.
+        ;;  - into text (title footer): the mode first. Text mode still pointed
+        ;;    at the bitmap reads glyph 0 from bitmap row 0, which the title
+        ;;    leaves empty, because the screen codes are the colours of bitmap
+        ;;    row 18 - 0. The other order showed the sprite blocks there.
         ldx dl_idx
         lda dl_d011,x
         ldy dl_shk,x
@@ -270,10 +280,23 @@ irq_handler
         bne +
         and #%11101111          ; DEN off: the whole frame is border
 +       and #$7f
+        sta irq_d011
+        ldy dl_line,x           ; now wait for the split line itself
+-       cpy $d012
+        beq +
+        bcs -                   ; not there yet (and never wait if late)
++       and #$20                ; BMM: into the bitmap?
+        beq _text
+        lda dl_d016,x
+        sta $d016
+        lda irq_d011
+        sta $d011
+        jmp _mem
+_text   lda irq_d011
         sta $d011
         lda dl_d016,x
         sta $d016
-        lda dl_d018,x
+_mem    lda dl_d018,x
         sta $d018
 
         inx                     ; the next entry
@@ -282,6 +305,8 @@ irq_handler
         ldx #0
 +       stx dl_idx
         lda dl_line,x
+        sec
+        sbc #1                  ; a line early: see above
         sta $d012
         lda #$01
         sta $d019               ; acknowledged
