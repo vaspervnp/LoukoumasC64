@@ -1,0 +1,10 @@
+# Clean runs on hard, in room frames (frame 0 is the first frame of play).
+# room <n>: <route> - replay with tools/c64sim.py, or in VICE with
+#   tools/c64run.py --room <n-1> --play "<route>" --frames <N>
+# The other 26 rooms are found by tools/c64route.py --all in about half an hour;
+# these three are kept because the search does not find 6 and 9 on its own
+# (both need a belly-flop timed on the top shelf against the canary), and 1 is
+# the one make check plays.
+room 1: UP@0-1,RIGHT@30-55,UP@50-51,LEFT@80-115,UP@80-81,RIGHT@116-160,UP@161-162,DOWN@170-172,FIRE@171-172,UP@190-191,RIGHT@190-250,UP@252-253,DOWN@258-260,FIRE@259-260,LEFT@275-320,RIGHT@321-360
+room 6: UP@0-0,DOWN@6-8,FIRE@7-8,RIGHT@23-110,UP@112-112,DOWN@118-120,FIRE@119-120,LEFT@135-210,UP@208-208,RIGHT@236-275,UP@245-245,LEFT@276-320,UP@276-276,RIGHT@325-366,UP@346-346,DOWN@362-364,FIRE@363-364,RIGHT@382-462
+room 9: UP@0-0,DOWN@5-7,FIRE@6-7,RIGHT@25-60,LEFT@61-95,UP@96-96,RIGHT@120-168,UP@141-141,UP@170-170,DOWN@176-178,FIRE@177-178,RIGHT@200-230,LEFT@231-300,UP@258-258,RIGHT@301-346,UP@322-322,UP@348-348,DOWN@354-356,FIRE@355-356,RIGHT@372-440

@@ -1,0 +1,160 @@
+# Hand-drawn sprite art for the C64. A ":" line names a sprite, then its rows.
+#
+#   .           transparent
+#   0-9 A-F     CPC pen number - the same pens as the CPC's assets/sprites.txt
+#
+# These are the CPC drawings with rows taken out: a C64 sprite is 21 lines, so
+# the cat is 20 tall rather than 24 (loukc64.md 4.3), curled up 14 rather
+# than 16 and flat 10 rather than 12. A multicolour pixel is 2:1 like a mode 0
+# pixel, so nothing else had to change shape.
+#
+# tools/mksprite64.py turns this, and the PNGs in assets/art/sprite, into
+# src/sprites.s. A name followed by "flip" also gets a mirrored copy.
+# A name followed by "pickup" is not a hardware sprite at all: it is drawn
+# into the bitmap, see src/art.s. Its highlight is pen 2, the shelves' own
+# yellow, so a pickup on a shelf costs the cell only the two colours it
+# brings: three is all a multicolour cell has.
+
+:CAT_STAND
+..2......2..
+.222....222.
+.272....272.
+.2222222222.
+.2233223322.
+.2234224322.
+.2233223322.
+.2222112222.
+.2222222222.
+..22222222..
+.2222222222.
+.2233333322.
+.2233333322.
+.2233333322.
+.2222222222.
+.2277777722.
+..22222222..
+..222..222..
+..111..111..
+...11..11...
+
+:CAT_WALK1
+..2......2..
+.222....222.
+.272....272.
+.2222222222.
+.2233223322.
+.2234224322.
+.2233223322.
+.2222112222.
+.2222222222.
+..22222222..
+.2222222222.
+.2233333322.
+.2233333322.
+.2233333322.
+.2222222222.
+.2277777722.
+..22222222..
+..222..222..
+.1111..111..
+.11.....11..
+
+:CAT_WALK2
+..2......2..
+.222....222.
+.272....272.
+.2222222222.
+.2233223322.
+.2234224322.
+.2233223322.
+.2222112222.
+.2222222222.
+..22222222..
+.2222222222.
+.2233333322.
+.2233333322.
+.2233333322.
+.2222222222.
+.2277777722.
+..22222222..
+..222..222..
+..111..1111.
+..11.....11.
+
+:CAT_ROLL
+....2222....
+..22222222..
+.2222222222.
+.2272222722.
+222222222222
+223322223322
+223422224322
+222222112222
+222222222222
+223333333322
+222222222222
+.2222222222.
+.1122222211.
+..11222211..
+
+:CAT_FLAT
+....2222....
+..22222222..
+.2233223322.
+.2234224322.
+222222112222
+223333333322
+222222222222
+.2277777722.
+.1122222211.
+..11....11..
+
+:SAUSAGE pickup
+..7777..
+.711227.
+71111117
+.711117.
+..7777..
+
+# Pickups are five lines: standing on a shelf whose top is line 8k+5, that is
+# lines 8k to 8k+4 - the shelf's own cell row and nothing above it.
+#
+# The saucer, from assets/art/sprite/MILK.png, with its grey foot made white:
+# a pickup stands on a yellow shelf, and orange, coral and yellow - or white,
+# cyan and yellow - is all a cell has room for.
+:MILK pickup
+3B3BBBB3
+3BBBB3B3
+33333333
+.333333.
+..3333..
+
+:ROBOT flip
+.....DD.....
+.....55.....
+.5555555555.
+.5CCCCCCCC5.
+.5CDD33DDC5.
+.5CDD33DDC5.
+.5CCCCCCCC5.
+.5444444445.
+.5444444445.
+.5555555555.
+.5CCCCCCCC5.
+..55555555..
+.44......44.
+.44......44.
+
+:CANARY flip
+..FFFF..
+.FFFFFF.
+FF4FFFFF
+1FFFFFFF
+1FFFFFFF
+.FF3333F
+.FF3333F
+.FFFFFFF
+..FFFFF.
+..FFFF..
+...11...
+..1..1..

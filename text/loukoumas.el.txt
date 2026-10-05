@@ -1,0 +1,64 @@
+# Ελληνικά κείμενα του ΛΟΥΚΟΥΜΑ. "ID = κείμενο", UTF-8, ένα ανά γραμμή.
+# Κάθε ID εδώ πρέπει να υπάρχει και στο loukoumas.en.txt.
+# Οι τόνοι πέφτουν αυτόματα - στα κεφαλαία δεν τονίζουμε.
+# TITLE1, WELLDONE και GAMEOVER ζωγραφίζονται σε μεγάλα γράμματα:
+# το πολύ 12 χαρακτήρες, αλλιώς δεν χωρούν στα 384 pixel.
+# ROOM1..ROOM29 μπαίνουν στο HUD, από τη στήλη 48 ως το δεξί άκρο:
+# 48 bytes, 3 ανά γράμμα, άρα 16 χαρακτήρες το πολύ.
+
+TITLE1    = ΛΟΥΚΟΥΜΑΣ
+TITLE2    = ΤΟ ΚΥΝΗΓΙ ΤΟΥ ΛΟΥΚΑΝΙΚΟΥ
+PRESS     = ΠΑΤΑ FIRE ΓΙΑ ΕΚΚΙΝΗΣΗ
+LANGNAME  = ΕΛΛΗΝΙΚΑ
+LANGHINT  = ΠΑΤΑ L ΓΙΑ ΑΓΓΛΙΚΑ
+# DIFFEASY, DIFFMED and DIFFHARD are read as one run: the chooser adds the
+# setting to the id of the first, so they must stay in this order.
+DIFFICULTY = ΠΟΣΟ ΔΥΣΚΟΛΑ ΤΟ ΘΕΛΕΙΣ
+DIFFEASY  = ΕΥΚΟΛΟ
+DIFFMED   = ΜΕΣΑΙΟ
+DIFFHARD  = ΔΥΣΚΟΛΟ
+DIFFHINT  = ΑΡΙΣΤΕΡΑ ΚΑΙ ΔΕΞΙΑ, ΜΕΤΑ FIRE
+# The credit is a name, so it is the same in both languages.
+CREDIT    = REVIVE8BIT - 2026 - VASPER
+SCORE     = ΣΚΟΡ
+LIVES     = ΖΩΕΣ
+SAUSAGES  = ΛΟΥΚΑΝΙΚΑ
+LEVEL     = ΠΙΣΤΑ
+PAUSED    = ΠΑΥΣΗ
+GAMEOVER  = ΤΕΛΟΣ
+WELLDONE  = ΜΠΡΑΒΟ!
+
+# --- Πράξη πρώτη: το σπίτι, 3:15 τα ξημερώματα -----------------------------
+ROOM1     = ΥΠΟΓΕΙΟ
+ROOM2     = ΓΚΑΡΑΖ
+ROOM3     = ΚΗΠΟΣ
+ROOM4     = ΕΙΣΟΔΟΣ
+ROOM5     = ΥΠΝΟΔΩΜΑΤΙΟ
+ROOM6     = ΝΤΟΥΛΑΠΑ
+ROOM7     = ΜΠΑΝΙΟ
+ROOM8     = ΓΡΑΦΕΙΟ
+ROOM9     = ΣΑΛΟΝΙ
+ROOM10    = ΚΟΥΖΙΝΑ
+
+# --- Πράξη δεύτερη: η γειτονιά και το σχολείο, με το φως ------------------
+ROOM11    = ΠΙΣΩ ΑΥΛΗ
+ROOM12    = ΛΕΜΟΝΑΔΑ
+ROOM13    = ΠΑΙΔΙΚΗ ΧΑΡΑ
+ROOM14    = ΠΑΡΚΟ
+ROOM15    = ΠΥΛΗ ΣΧΟΛΕΙΟΥ
+ROOM16    = ΔΙΑΔΡΟΜΟΣ
+ROOM17    = ΤΑΞΗ
+ROOM18    = ΓΡΑΦΕΙΑ
+ROOM19    = ΧΗΜΕΙΟ
+ROOM20    = ΓΥΜΝΑΣΤΗΡΙΟ
+ROOM21    = ΓΗΠΕΔΟ
+ROOM22    = ΠΑΡΚΙΝΓΚ
+ROOM23    = ΛΕΩΦΟΡΕΙΟ
+ROOM24    = ΠΕΖΟΔΡΟΜΙΟ
+
+# --- Πράξη τρίτη: ο κτηνίατρος, και ο δρόμος του γυρισμού -----------------
+ROOM25    = ΥΠΟΔΟΧΗ
+ROOM26    = ΕΞΕΤΑΣΤΗΡΙΟ
+ROOM27    = ΑΠΟΘΗΚΗ
+ROOM28    = ΤΑΡΑΤΣΕΣ
+ROOM29    = ΚΑΜΙΝΑΔΑ
