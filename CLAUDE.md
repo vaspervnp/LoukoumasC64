@@ -259,6 +259,21 @@ drive.
 - The game image in memory after the loader matches `loukoumas.prg` byte for
   byte (checked with a VICE memory dump).
 
+### The manuals and the inlay (loukc64.md M11)
+
+`MANUAL.en.md` and `MANUAL.el.md` are the source; `make manuals` lays them out
+as the A5 booklet (`tools/mkmanual.py`, the CPC's in the inlay's colours,
+needs fpdf2), `make covers` draws the inlay (`tools/mkcover64.py`, the CPC's
+with the C64's machine strip, loading box and features) and
+`make manualshots` retakes the screen shots (`tools/mkshots64.py`). All of
+`docs/` is committed. The shots are scripted runs in VICE through
+`c64run.py`: English presses `L` on the title, rooms are played on hard along
+`c64route.py` routes (the lounge is `routes.txt`'s room 9), and the game over
+is a poke (`--poke cat_lives=1@5`, which `mkscript.py` turns into a write at
+the start of that frame). The manual's facts are the C64's, not the CPC's:
+the border flashes only when the milk gives a life back, a stunned enemy
+blinks grey, and easy and medium slow the cast to a third and a half.
+
 ## 11. Conventions
 
 - Comment the reason, not the instruction, as in the CPC sources.

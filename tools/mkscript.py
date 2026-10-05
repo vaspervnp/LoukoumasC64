@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Turn a route into src/script.s, the input a SCRIPT=1 build plays.
 
-    tools/mkscript.py "FIRE@100-102,FIRE@130-132,RIGHT@150-200" [STOP] > src/script.s
+    tools/mkscript.py "FIRE@100-102,FIRE@130-132,RIGHT@150-200" [STOP [POKES]] > src/script.s
 
 With STOP the game halts at that frame (in script_halt, interrupts still on)
-so tools/c64run.py can read it at exactly that moment.
+so tools/c64run.py can read it at exactly that moment. POKES, as
+"cat_lives=1@90,sausages_got=4@120", write a value into a variable at the
+start of that frame - a screen shot of the game over wants a cat on his last
+life, not a route that loses two.
 
 The same spelling as the CPC's make check routes: a control, @, and the
 frames it is held, inclusive. Frames count calls to read_controls, which is
@@ -14,6 +17,7 @@ reads nothing else, so a run is the same every time on every emulator.
 import sys
 
 stop = int(sys.argv[2]) if len(sys.argv) > 2 else 65535
+pokes = [p.strip() for p in (sys.argv[3] if len(sys.argv) > 3 else "").split(",") if p.strip()]
 
 BITS = {"UP": 0x01, "DOWN": 0x02, "LEFT": 0x04, "RIGHT": 0x08, "FIRE": 0x10,
         "QUIT": 0x20, "LANG": 0x40}
@@ -30,7 +34,15 @@ out += ["SCRIPT_STOP = %d" % stop, "",
         "        bne +",
         "script_halt",
         "        jmp script_halt",
-        "+       lda #0", "        sta ctl_scan",
+        "+       ldx #0                 ; the pokes due this frame",
+        "-       lda script_pokes+4,x", "        beq _poked",
+        "        lda script_pokes,x", "        cmp script_frame", "        bne +",
+        "        lda script_pokes+1,x", "        cmp script_frame+1", "        bne +",
+        "        lda script_pokes+2,x", "        sta scriptp",
+        "        lda script_pokes+3,x", "        sta scriptp+1",
+        "        lda script_pokes+5,x", "        ldy #0", "        sta (scriptp),y",
+        "+       txa", "        clc", "        adc #6", "        tax", "        bne -",
+        "_poked  lda #0", "        sta ctl_scan",
         "        lda #<script_tab", "        sta scriptp",
         "        lda #>script_tab", "        sta scriptp+1",
         "_next   ldy #4", "        lda (scriptp),y", "        beq _done",
@@ -60,4 +72,14 @@ for item in sys.argv[1].split(","):
     out.append("        .byte $%02x    ; %s" % (bits, item))
 out.append("        .word 0, 0")
 out.append("        .byte 0")
+out.append("")
+out.append(";; frame, address, 1, value")
+out.append("script_pokes")
+for item in pokes:
+    what, frame = item.split("@")
+    name, value = what.split("=")
+    out.append("        .word %d, %s" % (int(frame), name))
+    out.append("        .byte 1, %d    ; %s" % (int(value, 0), item))
+out.append("        .word 0, 0")
+out.append("        .byte 0, 0")
 print("\n".join(out))

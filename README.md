@@ -4,6 +4,11 @@ The C64 port of LOUKOUMAS, the overweight cat's great sausage chase, from the
 Amstrad CPC original in `../LoukoumasCPC`. The plan is `loukc64.md`; working
 notes are in `CLAUDE.md`.
 
+![The disc inlay.](docs/cover-en-front.png)
+
+The manual: [English](MANUAL.en.md) ([PDF](docs/manual-en.pdf)),
+[Ελληνικά](MANUAL.el.md) ([PDF](docs/manual-el.pdf)).
+
 ## Build and run
 
 Needs 64tass and VICE (x64sc); Python 3 with Pillow for the tools.
@@ -51,4 +56,5 @@ through its own fast loader on a 1541 and the KERNAL's on anything else.
 | M8 | SFX and music | done — the CPC's title tune, converted from its Arkos song; checked by pitch from a VICE recording, not yet by ear or on a 6581/8580 |
 | M9 | profiling | `PROFILE=1` build; room 1 peaks at 125 of 312 lines |
 | M10 | .d64, packer, loader, NTSC | done — own LZ packer (66%), a loader showing the REVIVE8BIT splash, a fast loader of our own (about 23 s from power-on on a 1541, against 100 s; KERNAL fallback on other drives); NTSC |
-| M11-M12 | manuals, real hardware | not started |
+| M11 | manuals, cover | done — `MANUAL.en.md`/`MANUAL.el.md` with the C64's keys and loading, A5 booklets, the disc inlay, and screen shots taken in VICE (`make manualshots covers manuals`) |
+| M12 | real hardware | not started |

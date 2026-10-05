@@ -2,7 +2,7 @@
 """Build a scripted copy of the game, play it in VICE, and read the result.
 
     tools/c64run.py --route "FIRE@120-122,..." [--room N] [--frames F]
-                    [--shot out.png] [--peek name ...] [--poke name=value]
+                    [--shot out.png] [--peek name ...] [--poke name=value@frame,...]
 
 The build is src/main.s with -D SCRIPT=1 (input from the route, see
 tools/mkscript.py) and -D STARTROOM=N. x64sc runs it in warp under the
@@ -78,9 +78,9 @@ class Monitor:
         return vals[:n]
 
 
-def build(route, room, out, stop):
+def build(route, room, out, stop, pokes=""):
     script = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "mkscript.py"),
-                             route, str(stop)], capture_output=True, text=True,
+                             route, str(stop), pokes], capture_output=True, text=True,
                             check=True).stdout
     open(os.path.join(ROOT, "src", "script.s"), "w").write(script)
     r = subprocess.run(["64tass", "-C", "-a", "-B", "-Wno-implied-reg", "--no-caret-diag",
@@ -102,6 +102,8 @@ def main():
     ap.add_argument("--frames", type=int, default=400)
     ap.add_argument("--shot")
     ap.add_argument("--peek", nargs="*", default=[])
+    ap.add_argument("--poke", default="", help="NAME=VALUE@FRAME,... - script "
+                    "frames, or room frames with --play")
     ap.add_argument("--save", nargs="*", default=[],
                     help="FILE:START:END (hex) - raw memory to a file")
     ap.add_argument("--out", default=os.path.join(ROOT, "build", "script"))
@@ -120,7 +122,9 @@ def main():
             items.append("%s@%d-%d" % (name, int(lo) + MENU, int(hi) + MENU))
         a.route = ",".join(items)
         a.frames += MENU
-    lbl = build(a.route, a.room, a.out, a.frames)
+        a.poke = ",".join("%s@%d" % (p.split("@")[0], int(p.split("@")[1]) + MENU)
+                          for p in a.poke.split(",") if p.strip())
+    lbl = build(a.route, a.room, a.out, a.frames, a.poke)
     for attempt in range(3):
         result = play(a, lbl)
         if result is not None:
