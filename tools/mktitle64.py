@@ -109,9 +109,10 @@ def letters(lang):
     return out
 
 
-def cells(img, bg, locked=None):
+def cells(img, bg, locked=None, rows=ROWS, first_byte_blank=True):
     """Choose each cell's three colours; return the bitmap, screen and colour
-    RAM, and the total error."""
+    RAM, and the total error. tools/mksplash64.py uses this too."""
+    ROWS = rows
     locked = locked or {}
     bmp, scr, col = bytearray(ROWS * 320), bytearray(ROWS * 40), bytearray(ROWS * 40)
     cost = 0
@@ -157,7 +158,8 @@ def cells(img, bg, locked=None):
                 bmp[cr * 320 + cc * 8 + y] = byte
             scr[cr * 40 + cc] = ((pal[0] or 0) << 4) | (pal[1] or 0)
             col[cr * 40 + cc] = pal[2] or 0
-    bmp[7] = 0                  # the byte text mode reads on the split line
+    if first_byte_blank:
+        bmp[7] = 0              # the byte text mode reads on the split line
     return bmp, scr, col, cost
 
 

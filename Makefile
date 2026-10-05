@@ -23,21 +23,26 @@ LBL     := build/loukoumas.lbl
 
 TASSFLAGS := -C -a -B -Wall -Wno-implied-reg --no-caret-diag
 
-.PHONY: all run check shots gen clean
+.PHONY: all run rundisk check shots gen clean
 
 all: $(PRG) $(D64)
 
 $(PRG): $(SRC) | build
 	$(TASS) $(TASSFLAGS) -o $@ -l $(LBL) -L build/loukoumas.lst src/main.s
 
-$(D64): $(PRG)
-	$(C1541) -format "loukoumas,26" d64 $@ -write $(PRG) loukoumas >/dev/null
+# The disc: the loader with the splash, and the game packed (tools/mkdisk64.py).
+$(D64): $(PRG) src/loader.s src/unpack.s tools/mkdisk64.py tools/pack64.py \
+		tools/mksplash64.py assets/revive8b.scr
+	$(PYTHON) tools/mkdisk64.py $(PRG) $(LBL)
 
 build:
 	mkdir -p build
 
 run: $(PRG)
 	$(X64) -autostart $(PRG)
+
+rundisk: $(D64)
+	$(X64) -autostart $(D64)
 
 check: $(PRG)
 	$(PYTHON) tools/c64check.py $(PRG) $(LBL)

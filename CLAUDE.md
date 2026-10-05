@@ -209,7 +209,32 @@ was generated once by `tools/convrooms.py` from the CPC build and is hand-edited
 source now — `make` never regenerates it, and re-running the converter throws
 away every `(C64: ...)` edit.
 
-exomizer is not installed here; the `.prg` is 29 KB unpacked.
+### The disc (loukc64.md 10)
+
+`tools/mkdisk64.py` builds `build/loukoumas.d64` with two files:
+
+- `LOUKOUMAS` (`src/loader.s`, 8 KB): moves its working part to `$C000`,
+  unpacks the REVIVE8BIT splash (the CPC's `revive8b.scr`, converted by
+  `tools/mksplash64.py` - a mode 0 screen is a multicolour bitmap's shape)
+  into bank 3 and shows it, KERNAL-loads `LOUKC64`, banks the ROMs out,
+  unpacks the game to `$0801` and jumps to its `start`.
+- `LOUKC64`: the game packed by `tools/pack64.py`, with a load address that
+  ends it at `$BFFF`. Its start overlaps the end of the unpacked game; that is
+  safe while no output byte lands on stream still to be read, which
+  `pack64.lowest_start` checks token by token. `mkdisk64.py` refuses a build
+  that breaks it.
+
+exomizer is not installed, so `pack64.py` is a byte-aligned LZ of our own
+(66% on the game; the title painting is most of what does not pack) with an
+80-byte decruncher, `src/unpack.s`. The loader uses the KERNAL's serial LOAD,
+so it works on any drive; with true drive emulation the title is up about
+90 seconds after `RUN`. A fast loader is the next step.
+
+- **64tass `-a` makes upper-case ASCII shifted PETSCII.** A file name written
+  `"LOUKC64"` came out `$CC $CF...` and the drive said FILE NOT FOUND; write
+  names in lower case.
+- The game image in memory after the loader matches `loukoumas.prg` byte for
+  byte (checked with a VICE memory dump).
 
 ## 11. Conventions
 
