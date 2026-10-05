@@ -29,6 +29,7 @@ propl           .word ?
 boxl            .word ?
 sfx_ptr         .word ?
 scriptp         .word ?
+mus_ptr         .word ?
 
 ;; --- the frame ---
 frame_count     .byte ?
@@ -123,6 +124,12 @@ spr_grey        .byte ?
 sfx_len         .byte ?
 sfx_idx         .byte ?
 sfx_cur_wave    .byte ?
+mus_on          .byte ?
+mus_tick        .byte ?
+mus_p_lo        .fill 2
+mus_p_hi        .fill 2
+mus_lines       .fill 2
+mus_gate        .fill 2
 
 ;; --- pictures and saved cells (video.s) ---
 pic_w           .byte ?

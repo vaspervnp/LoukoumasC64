@@ -7,7 +7,7 @@
 #   make gen        regenerate the generated sources from the art and text
 #
 # The generated sources (src/font.s, src/strings.s, src/sprites.s,
-# src/spriteblk.s, src/art.s, src/title.s) are committed, so a build needs only 64tass.
+# src/spriteblk.s, src/art.s, src/title.s, src/music.s) are committed, so a build needs only 64tass.
 # src/rooms.s was generated once by tools/convrooms.py and is hand-edited
 # source from then on - the Makefile never regenerates it.
 
@@ -49,6 +49,7 @@ gen:
 	$(PYTHON) tools/mktext64.py
 	$(PYTHON) tools/mksprite64.py
 	$(PYTHON) tools/mktitle64.py
+	$(PYTHON) tools/mkmusic64.py ../LoukoumasCPC/src/loukmus.asm
 
 clean:
 	rm -rf build

@@ -44,6 +44,8 @@ start
         sta prof_load
         jsr video_init
         jsr sfx_init
+        lda #0
+        sta mus_on
         lda #LANG_EL            ; it is a Greek cat
         sta lang
         lda #DIFF_HARD          ; the game as it was before there was a choice,
@@ -211,6 +213,10 @@ _tail   ldx tmp
 _done   rts
 
 title_loop
+        lda mus_on              ; the music, unless it is already playing -
+        bne title_frame         ; L redraws the title without stopping it
+        jsr music_start
+title_frame
         jsr wait_frame
         jsr read_controls
         lda ctl_pressed
@@ -227,11 +233,11 @@ _blink  ldy #ROW_PRESS          ; PRESS FIRE, on and off
         jsr clear_text_row
         lda frame_count
         and #BLINK_BIT
-        beq title_loop
+        beq title_frame
         lda #MSG_PRESS
         ldy #ROW_PRESS
         jsr print_msg_centre
-        jmp title_loop
+        jmp title_frame
 _done   rts
 
 ;; ===========================================================================

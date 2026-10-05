@@ -132,3 +132,142 @@ _on
         lda #15
 +       sta SID_VOL
         rts
+
+;; ===========================================================================
+;; The title music (loukc64.md 8): the CPC's Arkos song, notes converted by
+;; tools/mkmusic64.py, on voices 1 and 2. Voice 3 stays the effects'.
+;;
+;; The CPC's one instrument starts at volume 15 and loses one a tick, so a
+;; note is a short plucked blip whatever its length. The SID's nearest is no
+;; attack, a 300 ms decay to nothing, and the gate let go two ticks in so the
+;; release carries the note the rest of the way down - and so the next note
+;; on the voice starts a new attack.
+;;
+;; It plays on the title and the chooser, as on the CPC, and stops when the
+;; game starts: play_screen's sfx_init silences the whole chip after it.
+;; ===========================================================================
+
+MUSIC_WAVE      = WAVE_PULSE
+MUSIC_AD        = $08           ; attack 2 ms, decay 300 ms
+MUSIC_SR        = $08           ; sustain 0, release 300 ms
+MUSIC_GATE      = 2             ; ticks the gate is held
+MUSIC_VOICES    = 2
+
+        .include "music.s"
+
+music_start_lo  .byte <music_v1, <music_v2
+music_start_hi  .byte >music_v1, >music_v2
+voice_reg       .byte 0, 7              ; each voice's registers, from $D400
+
+;; ---------------------------------------------------------------------------
+;; music_start - from the top. music_stop - silence, and leave the chip be.
+;; ---------------------------------------------------------------------------
+music_start
+        php
+        sei
+        ldx #MUSIC_VOICES-1
+-       lda music_start_lo,x
+        sta mus_p_lo,x
+        lda music_start_hi,x
+        sta mus_p_hi,x
+        lda #0
+        sta mus_lines,x
+        sta mus_gate,x
+        ldy voice_reg,x
+        sta SID+4,y             ; gate off
+        lda #$08
+        sta SID+3,y             ; a square wave, like the PSG's
+        lda #0
+        sta SID+2,y
+        lda #MUSIC_AD
+        sta SID+5,y
+        lda #MUSIC_SR
+        sta SID+6,y
+        dex
+        bpl -
+        lda #15
+        sta SID_VOL
+        lda #1
+        sta mus_tick            ; the first call starts a line
+        sta mus_on
+        plp
+        rts
+
+music_stop
+        lda #0
+        sta mus_on
+        sta SID+4               ; both gates off
+        sta SID+7+4
+        rts
+
+;; ---------------------------------------------------------------------------
+;; music_play - one tick. Called from the frame interrupt.
+;; ---------------------------------------------------------------------------
+music_play
+        lda mus_on
+        beq _done
+        ldx #MUSIC_VOICES-1     ; the gates first: two ticks into a note
+_gate   lda mus_gate,x
+        beq +
+        dec mus_gate,x
+        bne +
+        ldy voice_reg,x
+        lda #MUSIC_WAVE
+        sta SID+4,y
++       dex
+        bpl _gate
+
+        dec mus_tick            ; and a new line every MUSIC_SPEED ticks
+        bne _done
+        lda #MUSIC_SPEED
+        sta mus_tick
+        ldx #MUSIC_VOICES-1
+_voice  lda mus_lines,x
+        bne _held
+        jsr music_event
+_held   dec mus_lines,x
+        dex
+        bpl _voice
+_done   rts
+
+;; music_event - voice X's next (note, lines). $ff goes back to the start.
+music_event
+        lda mus_p_lo,x
+        sta mus_ptr
+        lda mus_p_hi,x
+        sta mus_ptr+1
+        ldy #0
+        lda (mus_ptr),y
+        cmp #$ff
+        bne +
+        lda music_start_lo,x
+        sta mus_ptr
+        lda music_start_hi,x
+        sta mus_ptr+1
+        lda (mus_ptr),y
++       pha
+        iny
+        lda (mus_ptr),y
+        sta mus_lines,x
+        lda mus_ptr             ; two bytes on
+        clc
+        adc #2
+        sta mus_p_lo,x
+        lda mus_ptr+1
+        adc #0
+        sta mus_p_hi,x
+        pla
+        beq _rest
+        tay                     ; the note: its frequency, and the gate on
+        lda music_notes_lo,y
+        pha
+        lda music_notes_hi,y
+        ldy voice_reg,x
+        sta SID+1,y
+        pla
+        sta SID,y
+        lda #MUSIC_WAVE|1
+        sta SID+4,y
+        lda #MUSIC_GATE
+        sta mus_gate,x
+_rest   rts

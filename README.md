@@ -45,7 +45,7 @@ make check
 | M5 | pickups, HUD, BCD score, milk and flash, way out | done — the room-1 route passes |
 | M6 | all 29 rooms, decals, roomcheck | done — no clash; every room finished on hard with no life lost in the Python model (`tools/c64route.py`, `tools/routes.txt`); rooms 1, 6 and 9 also played through in VICE |
 | M7 | text in both languages, title, difficulty, game over, RUN/STOP | done — the title is the CPC's painting as a multicolour bitmap, lettered per language |
-| M8 | SFX and music | SFX done; no music yet |
+| M8 | SFX and music | done — the CPC's title tune, converted from its Arkos song; checked by pitch from a VICE recording, not yet by ear or on a 6581/8580 |
 | M9 | profiling | `PROFILE=1` build; room 1 peaks at 125 of 312 lines |
 | M10 | .d64, packer, loader, NTSC | .d64 and NTSC; no packer or loader yet (exomizer is not installed) |
 | M11-M12 | manuals, real hardware | not started |

@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Turn the CPC's Arkos Tracker song into src/music.s for the SID.
+
+    tools/mkmusic64.py [../LoukoumasCPC/src/loukmus.asm]
+
+The CPC plays its title music with the Arkos Tracker 3 AKG player, which has
+no 6502 version (loukc64.md 8). The song itself is small - one instrument,
+one channel with notes in it - so rather than redraw it in GoatTracker this
+reads the AKG source the tracker exported and writes the notes out for a
+player of our own (src/music.s):
+
+  * the linker: each position names a track per PSG channel. Channels A and
+    B go to SID voices 1 and 2; C would need voice 3, which the sound effects
+    have, and it is refused if it has notes in it.
+  * a track: a cell byte's low six bits are a note (0-59, plus the subsong's
+    base note), 60 a line with no note, 61 a wait of the next byte + 1 lines,
+    62 a wait of (top two bits + 2) lines, 63 an escaped note in the next
+    byte. On a note, top bit 7 means a new instrument byte follows and bit 6
+    an effect block index. Every note takes its own line.
+  * the instrument: volume 15 down to 1, one step a tick, then silence. The
+    SID has no volume per voice; an attack of 0 and a decay of about the
+    same length (300 ms) is the nearest envelope, and the gate is let go
+    two ticks in so the release carries it on down.
+
+Arkos note 57 is A-4, 440 Hz. The output is, per voice, a list of (note,
+lines) - note 0 a rest - ending in $FF, which loops.
+"""
+
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
+    ROOT, "..", "LoukoumasCPC", "src", "loukmus.asm")
+OUT = os.path.join(ROOT, "src", "music.s")
+
+
+def labels_and_bytes(path):
+    """{label: [byte or ('w', label)]} - db and dw in order, per label."""
+    out, cur = {}, None
+    for line in open(path):
+        line = line.split(";")[0].rstrip()
+        if not line:
+            continue
+        m = re.match(r"^(\w+)\s*$", line)
+        if m:
+            cur = m.group(1)
+            out.setdefault(cur, [])
+            continue
+        m = re.match(r"^\s+(db|dw)\s+(.+)$", line)
+        if m and cur:
+            for v in m.group(2).split(","):
+                v = v.strip()
+                if m.group(1) == "dw":
+                    out[cur].append(("w", v))
+                elif v.startswith('"'):
+                    out[cur].extend(ord(c) for c in v.strip('"'))
+                else:
+                    out[cur].append(eval(v))
+    return out
+
+
+def read_track(data, base, height):
+    """A track -> [(line, note)] for the lines that start a note."""
+    events, line, i = [], 0, 0
+    while line < height and i < len(data):
+        b = data[i]
+        i += 1
+        code, flags = b & 63, b >> 6
+        if code < 60 or code == 63:
+            if code == 63:
+                note = data[i]
+                i += 1
+            else:
+                note = code + base
+            if flags & 2:
+                i += 1          # the new instrument: there is only one
+            if flags & 1:
+                i += 1          # the effect block: a volume, see below
+            events.append((line, note))
+            line += 1
+        elif code == 60:
+            line += 1
+        elif code == 61:
+            line += data[i] + 1
+            i += 1
+        elif code == 62:
+            line += flags + 2
+    return events
+
+
+def main():
+    d = labels_and_bytes(SRC)
+    start = d["Subsong0_Start"]
+    speed, base = start[5], start[6]
+    linker = d["Subsong0_Linker"] + d.get("Subsong0_Linker_Loop", [])
+    # Positions: three track words and a linker block word, until the dw 0.
+    words = [w for w in d["Subsong0_Linker_Loop"]]
+    positions = []
+    k = 0
+    while k + 3 < len(words) and words[k] != 0 and isinstance(words[k], tuple):
+        positions.append([words[k][1], words[k + 1][1], words[k + 2][1], words[k + 3][1]])
+        k += 4
+    voices = [[], []]
+    for tracks in positions:
+        height = d[tracks[3]][0]
+        for ch in range(3):
+            ev = read_track(d[tracks[ch]], base, height)
+            if ch == 2:
+                if ev:
+                    sys.exit("mkmusic64: channel C has notes; voice 3 is the effects'")
+                continue
+            # (note, lines) runs covering the whole height of the position.
+            runs = []
+            if not ev or ev[0][0] > 0:
+                runs.append([0, ev[0][0] if ev else height])
+            for n, (line, note) in enumerate(ev):
+                end = ev[n + 1][0] if n + 1 < len(ev) else height
+                runs.append([note, end - line])
+            voices[ch].extend(runs)
+
+    def freq(note):
+        hz = 440.0 * 2 ** ((note - 57) / 12)
+        return round(hz * 16777216 / 985248)
+
+    used = sorted({n for v in voices for n, _ in v if n})
+    with open(OUT, "w") as fh:
+        fh.write(";; Generated by tools/mkmusic64.py from the CPC's loukmus.asm - do not edit.\n")
+        fh.write(";; Per voice: note, lines; note 0 is a rest, $ff loops.\n\n")
+        fh.write("MUSIC_SPEED = %d             ; ticks a line, as on the CPC\n\n" % speed)
+        fh.write(";; SID frequencies of the notes the song uses, PAL.\n")
+        fh.write("music_notes_lo .byte 0, %s\n" % ", ".join("<%d" % freq(n) for n in used))
+        fh.write("music_notes_hi .byte 0, %s\n" % ", ".join(">%d" % freq(n) for n in used))
+        for v, runs in enumerate(voices):
+            fh.write("\nmusic_v%d\n" % (v + 1))
+            for note, lines in runs:
+                while lines > 255:
+                    fh.write("        .byte %d, 255\n" % (used.index(note) + 1 if note else 0))
+                    lines -= 255
+                fh.write("        .byte %2d, %3d     ; %s\n" % (
+                    used.index(note) + 1 if note else 0, lines,
+                    "note %d" % note if note else "rest"))
+            fh.write("        .byte $ff\n")
+    print("mkmusic64: %d positions, %d notes, speed %d"
+          % (len(positions), sum(1 for v in voices for n, _ in v if n), speed), file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

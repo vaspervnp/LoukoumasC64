@@ -23,7 +23,7 @@ reintroduced "for safety":
 | The erase/draw "window" for background changes | Gone. Only pickups change the bitmap, and they keep their own cells. |
 | Packed tables, `DATA_ORG,DATA_STORE`, LZSS onto the screen | Gone. The sprites and font travel behind the code and are copied into the VIC bank at boot. |
 | Shake through R7 | YSCROLL in the HUD split (`irq.s`), plus the same offset on every sprite. |
-| PSG through the PPI, mixer bit 6 | SID voice 3. `sfx_update` runs in the frame interrupt. |
+| PSG through the PPI, mixer bit 6 | SID voice 3 for effects, voices 1-2 for the title music. Both step in the frame interrupt. |
 
 ## 2. Memory
 
@@ -137,6 +137,19 @@ of room 1 byte for byte.
 - HUD and footer: hires text, 40 columns. Big text (title, ΤΕΛΟΣ, ΜΠΡΑΒΟ!) is
   drawn into the bitmap through `fill_box`, a run of font pixels per box.
 - One program, both languages; it starts in Greek and `L` switches on the title.
+
+## 7a. Music
+
+The CPC's title tune is an Arkos Tracker 3 song (`src/loukmus.asm` there);
+AKG has no 6502 player, so `tools/mkmusic64.py` decodes the exported tracks
+into (note, lines) lists for `music_play` in `sound.s`: voices 1 and 2,
+speed 5, Arkos note 57 = A-4. The one instrument (15 down to 1, a step a
+tick) becomes attack 0 / decay 300 ms with the gate let go after two ticks.
+It plays on the title and the chooser; `play_screen` stops it and the effects
+own the chip. The master volume is the effects' fade too, which is fine only
+because the two never sound at once - if music ever plays in the game, the
+effects' fade has to move to their envelope. To check it without ears:
+`x64sc -sounddev wav -soundarg x.wav ...` and look at onsets and pitch.
 
 ## 7b. The title picture
 

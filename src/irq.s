@@ -346,6 +346,7 @@ frame_work
         sta ntsc_sfx
         jmp ++
 +       jsr sfx_update
+        jsr music_play
 +       inc frame_count
         rts
 

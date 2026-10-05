@@ -81,6 +81,7 @@ BANNER_Y        = BANNER_ROW*8+5
 ;; play_screen - walk the flat, one room at a time. Returns on RUN/STOP.
 ;; ---------------------------------------------------------------------------
 play_screen
+        jsr music_stop          ; the chip is the effects' now
         jsr sfx_init
         lda #0
         sta score
