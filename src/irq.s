@@ -66,9 +66,9 @@ machine_init
         sta sptr+1
         ldx #>(sprite_blocks_end-sprite_blocks+255)
         jsr copy_pages
-        lda #0                  ; the whole charset slot: a screen code past
-        tay                     ; the font is read on the split line, and its
--       sta CHARSET,y           ; last row has to be blank like theirs
+        lda #0                  ; the whole charset slot clear first: the font
+        tay                     ; and the second sprite blocks go into it
+-       sta CHARSET,y
         sta CHARSET+$100,y
         sta CHARSET+$200,y
         sta CHARSET+$300,y
@@ -87,6 +87,16 @@ machine_init
         lda #>CHARSET
         sta sptr+1
         ldx #>(font_end-font+255)
+        jsr copy_pages
+        lda #<sprite2_store     ; and the enemies' second frames past it
+        sta ptr
+        lda #>sprite2_store
+        sta ptr+1
+        lda #<SPRITE_MEM2
+        sta sptr
+        lda #>SPRITE_MEM2
+        sta sptr+1
+        ldx #>(sprite_blocks2_end-sprite_blocks2+255)
         jsr copy_pages
         lda #$35
         sta $01

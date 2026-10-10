@@ -48,10 +48,8 @@ spr_pair
         jsr _place
 
         ldx spr_n
-        ldy #1                  ; the overlay
+        ldy #1                  ; the overlay (pointers are the VIC's own)
         lda (frmp),y
-        clc
-        adc #SPR_PTR0
         sta spr_ptr,x
         ldy #3
         lda (frmp),y
@@ -71,8 +69,6 @@ spr_pair
 _body   inx
         ldy #0
         lda (frmp),y
-        clc
-        adc #SPR_PTR0
         sta spr_ptr,x
         ldy #2
         lda (frmp),y

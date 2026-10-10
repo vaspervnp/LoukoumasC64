@@ -126,11 +126,28 @@ sfx_len         .byte ?
 sfx_idx         .byte ?
 sfx_cur_wave    .byte ?
 mus_on          .byte ?
-mus_tick        .byte ?
-mus_p_lo        .fill 2
-mus_p_hi        .fill 2
-mus_lines       .fill 2
-mus_gate        .fill 2
+mus_v           .byte ?         ; the voice being stepped (music_play)
+mus_r           .byte ?         ; its SID register offset
+mus_p_lo        .fill 3         ; where each voice is in its stream
+mus_p_hi        .fill 3
+mus_cnt         .fill 3         ; ticks left of its note or rest
+mus_note        .fill 3         ; 0: a rest
+mus_inst        .fill 3
+mus_gate        .fill 3         ; ticks before the gate lets go; 0: let go
+mus_f_lo        .fill 3         ; the note's frequency, glides and drops in it
+mus_f_hi        .fill 3
+mus_sl_lo       .fill 3         ; a glide: added each tick, for mus_sl_t ticks
+mus_sl_hi       .fill 3
+mus_sl_t        .fill 3
+mus_age         .fill 3         ; ticks since the note began, to 255
+mus_arp         .fill 3         ; where it is in its chord
+mus_pw_lo       .fill 3
+mus_pw_hi       .fill 3
+mus_sweep       .fill 3         ; the pulse sweep, its sign turned at the ends
+mus_vb_lo       .fill 3         ; the vibrato's offset
+mus_vb_hi       .fill 3
+mus_vb_st       .fill 3         ; its step this tick, signed
+mus_vb_c        .fill 3         ; ticks before the step turns
 
 ;; --- pictures and saved cells (video.s) ---
 pic_w           .byte ?
@@ -239,6 +256,7 @@ en_base         .fill 3
 en_phase        .fill 3
 en_stun         .fill 3
 en_tick         .fill 3
+en_anim         .fill 3         ; steps taken: which of its two frames
 en_i            .byte ?
 
 ;; --- scripted input ---

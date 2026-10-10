@@ -11,6 +11,7 @@
 ;; ===========================================================================
 
 ENEMY_COUNT     = 3
+ANIM_STEPS      = 4             ; an enemy changes picture every 4 steps
 E_FROM_ROOM     = 7             ; type, x, y, dx, x0, x1, base: per room
 
 EB_WALK         = 0             ; patrols a platform
@@ -90,6 +91,9 @@ _one    cpx tmp
         sta en_phase,x
         sta en_stun,x
         sta en_tick,x
+        txa                     ; out of step with each other
+        asl
+        sta en_anim,x
         jmp _next
 _empty  lda #0
         sta en_type,x
@@ -161,6 +165,7 @@ enemy_walk
 ;; wrap below 0, which reads as past the right - so which end it went past
 ;; is decided by the way it was going, not by the number.
 enemy_bounce
+        inc en_anim,x           ; a step: the animation goes with it
         lda en_x,x
         clc
         adc en_dx,x
@@ -262,7 +267,16 @@ _left   lda ek_left_lo-1,y
         sta frmp
         lda ek_left_hi-1,y
         sta frmp+1
-_pos    lda en_x,x
+_pos    lda en_anim,x           ; every ANIM_STEPS steps, the other picture:
+        and #ANIM_STEPS         ; it is the next two descriptors on
+        beq +
+        lda frmp
+        clc
+        adc #2*FRM_SIZE
+        sta frmp
+        bcc +
+        inc frmp+1
++       lda en_x,x
         sta spr_px
         lda en_y,x
         sta spr_py

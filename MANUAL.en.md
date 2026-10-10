@@ -311,9 +311,10 @@ machine it skips one step in six, so everything keeps its speed in seconds.
 
 The disk loads through a **fast loader** of its own: a program put into the
 1541's memory that finds the files itself and sends them two bits at a time,
-about ten times what the KERNAL manages. The title music is the Amstrad
-version's Arkos Tracker song, read out of its data and played on two of the
-**SID**'s voices; the third is the sound effects'.
+about ten times what the KERNAL manages. The title music was written for
+the **SID**: all three of its voices, with a slide whistle, chords played as
+fast arpeggios, and a snare made of noise. In the game the sound effects
+have the chip to themselves.
 
 Both languages are in the same program, and `L` repaints the lettering rather
 than the screen.
@@ -328,7 +329,7 @@ followed is [loukc64.md](loukc64.md).
 |  |  |
 |---|---|
 | Code, graphics and design | **VASPER** |
-| Music | The Amstrad score (Arkos Tracker 3), on the SID |
+| Music | Written for the SID |
 | Published by | **REVIVE8BIT**, 2026 |
 
 *Loukoumas is a cat. No sausages were harmed in the making of this game. The

@@ -36,8 +36,9 @@ reintroduced "for safety":
 | `$0801-` | BASIC stub, code, read-only tables (the title picture is 10 KB of them), then the sprite blocks and font on their way to bank 3 |
 | `$9000-$BFFF` | workspace (`vars.s`, `.virtual` — not in the file) |
 | `$C000` / `$C400` | text screen / bitmap screen RAM |
-| `$C800-$CFFF` | the font (charset), 55 glyphs |
-| `$D000-$DFFF` | sprite blocks, in the RAM under the I/O |
+| `$C800-$C9FF` | the font (charset), 55 glyphs |
+| `$CA00-$CFFF` | sprite blocks 64-87, the enemies' second frames (`SPRITE_MEM2`) |
+| `$D000-$DFFF` | sprite blocks 0-63, in the RAM under the I/O |
 | `$E000-$FF3F` | the multicolour bitmap, in the RAM under the KERNAL |
 | `$FFFA-$FFFF` | NMI and IRQ vectors — **`clear_all` must stop at `$FF3F`** |
 
@@ -134,6 +135,16 @@ of room 1 byte for byte.
   and `mksprite64.py` says so.
 - 0-1 the cat; 2-7 the three enemies, a pair each. **All eight are in use**, so
   the plan's stun stars became a grey blink of the stunned enemy instead.
+- **Every enemy has two pictures**: the CPC's, and a second drawn for the
+  C64 in `assets/sprites.txt` (`NAME2`: wings up, legs apart, a ball's seams
+  turned), the same size and colours. Four descriptors in a row - right,
+  left, second right, second left - and `enemies_shadow` adds 8 every
+  `ANIM_STEPS` steps (`en_anim`, counted in `enemy_bounce`): a stunned enemy
+  holds its pose, and on easy they all move their legs slower.
+- 75 blocks: 64 under the I/O and the rest past the font in the charset slot
+  (`SPRITE_MEM2`). No split reads that part of the slot since the write
+  orders in §3; descriptors hold the VIC's own pointer values, 0 for no
+  overlay.
 - The cat blinks during his grace after a lost life (`INVUL_FRAMES`).
 - Collision is software, boxes as on the CPC (`cat_hits_box`).
 
@@ -148,16 +159,21 @@ of room 1 byte for byte.
 
 ## 7a. Music
 
-The CPC's title tune is an Arkos Tracker 3 song (`src/loukmus.asm` there);
-AKG has no 6502 player, so `tools/mkmusic64.py` decodes the exported tracks
-into (note, lines) lists for `music_play` in `sound.s`: voices 1 and 2,
-speed 5, Arkos note 57 = A-4. The one instrument (15 down to 1, a step a
-tick) becomes attack 0 / decay 300 ms with the gate let go after two ticks.
-It plays on the title and the chooser; `play_screen` stops it and the effects
-own the chip. The master volume is the effects' fade too, which is fine only
-because the two never sound at once - if music ever plays in the game, the
-effects' fade has to move to their envelope. To check it without ears:
-`x64sc -sounddev wav -soundarg x.wav ...` and look at onsets and pitch.
+The title music is written for the SID, in `assets/music/title.txt` (the
+format is at its top), and compiled by `tools/mkmusic64.py` into `music.s`:
+a byte-code stream per voice - notes, rests, glides, instrument changes -
+and a table of instruments. `music_play` in `sound.s` steps it every frame:
+waveform, envelope, pulse sweep, vibrato after a delay, a fixed gate length
+for staccato, chords as one-note-a-tick arpeggios, glides and pitch drops
+(the bonk, the snare's snap). Every bar is checked to be 8 rows (16ths) and
+the voices to loop at the same row.
+
+It uses **all three voices**: it plays only on the title and the chooser,
+where there are no effects, and `play_screen` stops it and `sfx_init`
+silences the chip before the game. If music ever plays in the game, voice 3
+and the master volume (the effects' fade) have to be shared out first. To
+check it without ears: `x64sc -sounddev wav -soundarg x.wav` - not in warp,
+which writes no sound - and look at onsets and pitch.
 
 ## 7b. The title picture
 

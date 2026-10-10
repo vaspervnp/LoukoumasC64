@@ -22,6 +22,8 @@ SPRITE_MEM      = $D000         ; 64 blocks, in the RAM under the I/O
 BITMAP          = $E000         ; 8000 bytes, in the RAM under the KERNAL
 BITMAP_END      = BITMAP+8000
 SPR_PTR0        = (SPRITE_MEM-VIC_BANK)/64      ; pointer of block 0
+SPRITE_MEM2     = $CA00         ; 24 more blocks: the charset slot past the font
+SPR_PTR2        = (SPRITE_MEM2-VIC_BANK)/64     ; pointer of block 64
 COLOUR_RAM      = $D800
 
 ;; In idle state the VIC shows the byte at the top of the bank, $FFFF - which

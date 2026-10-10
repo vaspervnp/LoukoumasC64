@@ -152,6 +152,7 @@ def play(a, lbl):
         sf = lbl["script_frame"]
         halt = lbl["script_halt"]
         started = False
+        reached = False
         deadline = time.time() + 120
         while time.time() < deadline:
             mon.cmd("x")
@@ -160,15 +161,19 @@ def play(a, lbl):
             regs = mon.read(0.3)
             m = re.search(r"\(C:\$([0-9a-f]{4})\)", regs)
             if m and int(m.group(1), 16) in (halt, halt + 1, halt + 2):
+                reached = True
                 break
             lo, hi = mon.mem(sf, 2)
             f = lo | (hi << 8)
             if f == a.frames:
+                reached = True
                 break
             if f:
                 started = True
             elif not started and time.time() > deadline - 110:
                 return None             # ten seconds and not one frame read
+        if not reached:
+            return None                 # it never got there: run it again
         if a.shot:
             # The monitor stops the machine wherever the beam is, and VICE's
             # picture of the line it was drawing is half done. Go on to the

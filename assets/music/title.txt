@@ -1,0 +1,72 @@
+# LOUKOUMAS - the title music, for the SID's three voices.
+#
+# Compiled by tools/mkmusic64.py into src/music.s for the player in
+# src/sound.s. Happy, bouncy, a little cartoonish: an oom-pah in 2/4, a
+# slide whistle and a boing to open, a sneaky staccato chase, and "shave
+# and a haircut - two bits" (the traditional knock, public domain) to round
+# it off before it goes round again.
+#
+#   speed N              ticks (50 Hz frames) a row; a row is a 16th note
+#   inst NAME key=value  an instrument (see tools/mkmusic64.py for the keys)
+#   arp NAME o o o       a chord, as semitones the arpeggio cycles through
+#   voice N              the notes of voice N (1-3), up to the next voice
+#
+# In a voice: C5:2 is a note and its length in rows, r:2 a rest, C5>C6:6 a
+# glide from one note to the other, @NAME the instrument from here on, and
+# %loop where the song goes back to when it ends - at the same row in every
+# voice. | marks bars and is checked: every bar is 8 rows.
+
+speed 5
+
+#     name    wave     ad  sr  pw   sweep gate vibrato(delay,step,speed)  arp   drop
+inst lead    wave=pulse ad=08 sr=52 pw=0600 sweep=12 vib=10,6,4
+inst whistle wave=tri   ad=00 sr=F2 vib=0,40,3
+inst bonk    wave=tri   ad=09 sr=00 gate=4 drop=-40
+inst tuba    wave=pulse ad=06 sr=00 pw=0300 gate=3
+inst maj     wave=pulse ad=05 sr=00 pw=0800 sweep=24 gate=4 arp=maj
+inst dom7    wave=pulse ad=05 sr=00 pw=0800 sweep=24 gate=4 arp=dom7
+inst snare   wave=noise ad=05 sr=00 gate=1 drop=-300
+
+arp maj  0 4 7 12
+arp dom7 0 4 7 10
+
+voice 1
+# intro: up the slide whistle, a pause on top, down it, and a bonk
+@whistle C5>C6:6 r:1 C6>G5:1 | @bonk C4:4 r:4 |
+%loop
+# A: the tune
+@lead C5:2 E5:2 G5:2 E5:2 | F5:1 F#5:1 G5:2 r:2 C6:2 | B5:2 A5:1 G5:1 F5:2 D5:2 | E5:2 C5:2 G4:2 r:2 |
+A5:2 C6:2 A5:2 F5:2 | G5:2 E5:1 D#5:1 E5:2 C5:2 | D5:1 D#5:1 E5:1 F5:1 G5:2 B4:2 | C5:2 r:2 @whistle G5>C6:2 r:2 |
+# A again, landing higher
+@lead C5:2 E5:2 G5:2 E5:2 | F5:1 F#5:1 G5:2 r:2 C6:2 | B5:2 A5:1 G5:1 F5:2 D5:2 | E5:2 C5:2 G4:2 r:2 |
+A5:2 C6:2 A5:2 F5:2 | G5:2 E5:1 D#5:1 E5:2 C5:2 | D5:2 F5:2 B5:2 D6:2 | C6:2 r:6 |
+# B: on tiptoe, then a chase down the stairs
+A5:1 r:1 A5:1 r:1 G#5:1 A5:1 C6:2 | A5:1 r:1 F5:1 r:1 C5:2 F5:2 |
+F#5:1 r:1 F#5:1 r:1 F5:1 F#5:1 A5:2 | C6:2 A5:2 F#5:2 D5:2 |
+B5:1 r:1 B5:1 r:1 A#5:1 B5:1 D6:2 | F6:2 D6:1 B5:1 G5:1 F5:1 D5:1 B4:1 |
+# shave and a hair-cut - two bits
+C6:4 G5:2 G5:2 | A5:4 G5:4 | r:4 B5:4 | C6:4 r:4 |
+
+voice 2
+@tuba r:8 | r:2 G2:2 A2:2 B2:2 |
+%loop
+@tuba C3:2 r:2 G2:2 r:2 | C3:2 r:2 G2:2 r:2 | G2:2 r:2 D3:2 r:2 | C3:2 r:2 G2:2 r:2 |
+F2:2 r:2 C3:2 r:2 | C3:2 r:2 G2:2 r:2 | G2:2 r:2 D3:2 B2:2 | C3:2 r:2 G2:2 B2:2 |
+C3:2 r:2 G2:2 r:2 | C3:2 r:2 G2:2 r:2 | G2:2 r:2 D3:2 r:2 | C3:2 r:2 G2:2 r:2 |
+F2:2 r:2 C3:2 r:2 | C3:2 r:2 G2:2 r:2 | G2:2 r:2 D3:2 B2:2 | C3:2 r:2 D2:2 E2:2 |
+F2:2 r:2 C3:2 r:2 | F2:2 r:2 C3:2 r:2 |
+D3:2 r:2 A2:2 r:2 | D3:2 r:2 A2:2 F#2:2 |
+G2:2 r:2 D3:2 r:2 | G2:2 r:2 D3:2 B2:2 |
+C3:4 C3:2 C3:2 | F2:4 C3:4 | r:4 G2:4 | C3:4 r:4 |
+
+voice 3
+r:8 | r:4 @snare C6:1 C6:1 C6:2 |
+%loop
+@maj r:2 C4:2 r:2 C4:2 | r:2 C4:2 r:2 C4:2 | @dom7 r:2 G3:2 r:2 G3:2 | @maj r:2 C4:2 r:2 C4:2 |
+r:2 F4:2 r:2 F4:2 | r:2 C4:2 r:2 C4:2 | @dom7 r:2 G3:2 r:2 G3:2 | @maj r:2 C4:2 @snare C6:1 C6:1 C6:2 |
+@maj r:2 C4:2 r:2 C4:2 | r:2 C4:2 r:2 C4:2 | @dom7 r:2 G3:2 r:2 G3:2 | @maj r:2 C4:2 r:2 C4:2 |
+r:2 F4:2 r:2 F4:2 | r:2 C4:2 r:2 C4:2 | @dom7 r:2 G3:2 r:2 G3:2 | @maj r:2 C4:2 r:2 @dom7 C4:2 |
+@maj r:2 F4:2 r:2 F4:2 | r:2 F4:2 r:2 F4:2 |
+@dom7 r:2 D4:2 r:2 D4:2 | r:2 D4:2 r:2 D4:2 |
+r:2 G3:2 r:2 G3:2 | r:2 G3:2 @snare C6:1 C6:1 C6:1 C6:1 |
+@maj C4:4 C4:2 C4:2 | F4:4 C4:4 | r:4 @dom7 G3:4 | @maj C4:4 @snare C6:1 C6:1 C6:2 |

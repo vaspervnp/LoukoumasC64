@@ -376,7 +376,12 @@ sprite_store
 font_store
         .logical CHARSET
         .include "font.s"
-        .cerror * > CHARSET+$800, "the font is more than 256 characters"
+        .cerror * > SPRITE_MEM2, "the font runs into the second sprite blocks"
+        .endlogical
+sprite2_store
+        .logical SPRITE_MEM2
+        .include "spriteblk2.s"
+        .cerror * > CHARSET+$800, "too many sprite blocks past the font"
         .endlogical
 store_end
         .cerror store_end > CODE_LIMIT, "the file runs into the workspace"

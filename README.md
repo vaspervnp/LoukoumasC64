@@ -57,7 +57,7 @@ through its own fast loader on a 1541 and the KERNAL's on anything else.
 | M5 | pickups, HUD, BCD score, milk and flash, way out | done — the room-1 route passes |
 | M6 | all 29 rooms, decals, roomcheck | done — no clash; every room finished on hard with no life lost in the Python model (`tools/c64route.py`, `tools/routes.txt`); rooms 1, 6 and 9 also played through in VICE |
 | M7 | text in both languages, title, difficulty, game over, RUN/STOP | done — the title is the CPC's painting as a multicolour bitmap, lettered per language |
-| M8 | SFX and music | done — the CPC's title tune, converted from its Arkos song; checked by pitch from a VICE recording, not yet by ear or on a 6581/8580 |
+| M8 | SFX and music | done — title music written for the SID's three voices (`assets/music/title.txt`): slide whistle, oom-pah, arpeggio chords, a noise snare; checked by pitch from a VICE recording, not yet on a 6581/8580 |
 | M9 | profiling, CI | done — `make profile` plays all 29 rooms in VICE with no frame missed (worst step 225 of 312 lines); the way out now opens from a copy made at room load instead of a nine-frame repaint; the HUD split no longer slips a line under sprites; CI on every push (`make modelcheck`, and the VICE checks where VICE has ROMs) |
 | M10 | .d64, packer, loader, NTSC | done — own LZ packer (66%), a loader showing the REVIVE8BIT splash, a fast loader of our own (about 23 s from power-on on a 1541, against 100 s; KERNAL fallback on other drives); NTSC |
 | M11 | manuals, cover | done — `MANUAL.en.md`/`MANUAL.el.md` with the C64's keys and loading, A5 booklets, the disc inlay, and screen shots taken in VICE (`make manualshots covers manuals`) |

@@ -134,30 +134,21 @@ _on
         rts
 
 ;; ===========================================================================
-;; The title music (loukc64.md 8): the CPC's Arkos song, notes converted by
-;; tools/mkmusic64.py, on voices 1 and 2. Voice 3 stays the effects'.
+;; The title music (loukc64.md 8): written for the SID in assets/music/title.txt
+;; and compiled by tools/mkmusic64.py into the streams and instruments of
+;; music.s, which tells the byte code. All three voices: it plays on the title
+;; and the chooser, where there are no effects, and play_screen's sfx_init
+;; silences the whole chip after music_stop when the game starts.
 ;;
-;; The CPC's one instrument starts at volume 15 and loses one a tick, so a
-;; note is a short plucked blip whatever its length. The SID's nearest is no
-;; attack, a 300 ms decay to nothing, and the gate let go two ticks in so the
-;; release carries the note the rest of the way down - and so the next note
-;; on the voice starts a new attack.
-;;
-;; It plays on the title and the chooser, as on the CPC, and stops when the
-;; game starts: play_screen's sfx_init silences the whole chip after it.
+;; Every tick (the frame interrupt, 50 Hz) each voice either takes its next
+;; event or carries on with its note: the gate let go when it is time, the
+;; chord's next note, a glide or a drop moved on, the pulse width swept, the
+;; vibrato, and the frequency and pulse width written.
 ;; ===========================================================================
-
-MUSIC_WAVE      = WAVE_PULSE
-MUSIC_AD        = $08           ; attack 2 ms, decay 300 ms
-MUSIC_SR        = $08           ; sustain 0, release 300 ms
-MUSIC_GATE      = 2             ; ticks the gate is held
-MUSIC_VOICES    = 2
 
         .include "music.s"
 
-music_start_lo  .byte <music_v1, <music_v2
-music_start_hi  .byte >music_v1, >music_v2
-voice_reg       .byte 0, 7              ; each voice's registers, from $D400
+voice_reg       .byte 0, 7, 14          ; each voice's registers, from $D400
 
 ;; ---------------------------------------------------------------------------
 ;; music_start - from the top. music_stop - silence, and leave the chip be.
@@ -165,30 +156,24 @@ voice_reg       .byte 0, 7              ; each voice's registers, from $D400
 music_start
         php
         sei
-        ldx #MUSIC_VOICES-1
--       lda music_start_lo,x
+        ldx #2
+-       lda music_lo,x
         sta mus_p_lo,x
-        lda music_start_hi,x
+        lda music_hi,x
         sta mus_p_hi,x
+        lda #1
+        sta mus_cnt,x           ; the first tick reads an event
         lda #0
-        sta mus_lines,x
+        sta mus_note,x
         sta mus_gate,x
+        sta mus_inst,x
         ldy voice_reg,x
         sta SID+4,y             ; gate off
-        lda #$08
-        sta SID+3,y             ; a square wave, like the PSG's
-        lda #0
-        sta SID+2,y
-        lda #MUSIC_AD
-        sta SID+5,y
-        lda #MUSIC_SR
-        sta SID+6,y
         dex
         bpl -
         lda #15
         sta SID_VOL
         lda #1
-        sta mus_tick            ; the first call starts a line
         sta mus_on
         plp
         rts
@@ -196,8 +181,9 @@ music_start
 music_stop
         lda #0
         sta mus_on
-        sta SID+4               ; both gates off
+        sta SID+4               ; every gate off
         sta SID+7+4
+        sta SID+14+4
         rts
 
 ;; ---------------------------------------------------------------------------
@@ -206,68 +192,273 @@ music_stop
 music_play
         lda mus_on
         beq _done
-        ldx #MUSIC_VOICES-1     ; the gates first: two ticks into a note
-_gate   lda mus_gate,x
-        beq +
-        dec mus_gate,x
+        ldx #2
+_voice  stx mus_v
+        lda voice_reg,x
+        sta mus_r
+        dec mus_cnt,x
         bne +
-        ldy voice_reg,x
-        lda #MUSIC_WAVE
-        sta SID+4,y
-+       dex
-        bpl _gate
-
-        dec mus_tick            ; and a new line every MUSIC_SPEED ticks
-        bne _done
-        lda #MUSIC_SPEED
-        sta mus_tick
-        ldx #MUSIC_VOICES-1
-_voice  lda mus_lines,x
-        bne _held
         jsr music_event
-_held   dec mus_lines,x
+        jmp _next
++       jsr music_tick
+_next   ldx mus_v
         dex
         bpl _voice
 _done   rts
 
-;; music_event - voice X's next (note, lines). $ff goes back to the start.
+;; music_event - voice X's next note or rest, and any instrument before it.
 music_event
         lda mus_p_lo,x
         sta mus_ptr
         lda mus_p_hi,x
         sta mus_ptr+1
         ldy #0
-        lda (mus_ptr),y
+_read   lda (mus_ptr),y
+        iny
         cmp #$ff
         bne +
-        lda music_start_lo,x
+        lda music_loop_lo,x     ; the end: round again from the loop point
         sta mus_ptr
-        lda music_start_hi,x
+        lda music_loop_hi,x
         sta mus_ptr+1
+        ldy #0
+        beq _read
++       cmp #$c0
+        beq _glide
+        cmp #$80
+        bcc _note
+        and #$3f                ; an instrument
+        sta mus_inst,x
+        jmp _read
+_glide  lda #0                  ; from a note, moving by a delta each tick
+        sta mus_age,x
         lda (mus_ptr),y
-+       pha
         iny
+        sta mus_note,x
         lda (mus_ptr),y
-        sta mus_lines,x
-        lda mus_ptr             ; two bytes on
+        iny
+        sta mus_cnt,x
+        sta mus_sl_t,x
+        lda (mus_ptr),y
+        iny
+        sta mus_sl_lo,x
+        lda (mus_ptr),y
+        iny
+        sta mus_sl_hi,x
+        jmp _start
+_note   sta mus_note,x
+        lda (mus_ptr),y
+        iny
+        sta mus_cnt,x
+        lda #0
+        sta mus_sl_t,x
+_start  tya                     ; past the event
         clc
-        adc #2
+        adc mus_ptr
         sta mus_p_lo,x
         lda mus_ptr+1
         adc #0
         sta mus_p_hi,x
-        pla
-        beq _rest
-        tay                     ; the note: its frequency, and the gate on
-        lda music_notes_lo,y
-        pha
-        lda music_notes_hi,y
-        ldy voice_reg,x
-        sta SID+1,y
-        pla
-        sta SID,y
-        lda #MUSIC_WAVE|1
+        lda mus_note,x
+        bne music_note_on
+        ldy mus_inst,x          ; a rest: the gate let go
+        lda in_wave,y
+        ldy mus_r
         sta SID+4,y
-        lda #MUSIC_GATE
-        sta mus_gate,x
-_rest   rts
+        rts
+
+;; music_note_on - voice X's note from the start: the instrument's envelope,
+;; pulse width and gate, and the gate on.
+music_note_on
+        ldy mus_inst,x
+        lda in_gate,y           ; how long the gate is held: the
+        bne +                   ; instrument's, or to a tick before the end
+        lda mus_cnt,x
+        sec
+        sbc #1
++       sta mus_gate,x
+        lda #0
+        sta mus_age,x
+        sta mus_arp,x
+        sta mus_vb_lo,x
+        sta mus_vb_hi,x
+        lda in_vstep,y
+        sta mus_vb_st,x
+        lda in_vspeed,y
+        lsr                     ; half a swing first, so it centres
+        sta mus_vb_c,x
+        lda in_pw_lo,y
+        sta mus_pw_lo,x
+        lda in_pw_hi,y
+        sta mus_pw_hi,x
+        lda in_sweep,y
+        sta mus_sweep,x
+        jsr music_pitch
+        ldy mus_inst,x
+        lda in_ad,y
+        pha
+        lda in_sr,y
+        pha
+        lda in_wave,y
+        ldy mus_r
+        sta SID+4,y             ; gate off a moment: a new attack
+        pla
+        sta SID+6,y
+        pla
+        sta SID+5,y
+        jsr music_out
+        ldy mus_inst,x
+        lda in_wave,y
+        ora #1
+        ldy mus_r
+        sta SID+4,y
+        rts
+
+;; music_pitch - mus_f from the note, and the chord's step if it has one.
+music_pitch
+        lda mus_note,x
+        sec
+        sbc #1
+        sta mus_ptr             ; the note, C0 = 0 (mus_ptr is free by now)
+        ldy mus_inst,x
+        lda in_arp,y
+        beq _plain
+        clc
+        adc mus_arp,x
+        tay
+        lda music_arps-1,y
+        cmp #$ff
+        bne +
+        lda #0                  ; round the chord again
+        sta mus_arp,x
+        ldy mus_inst,x
+        lda in_arp,y
+        tay
+        lda music_arps-1,y
++       clc
+        adc mus_ptr
+        sta mus_ptr
+_plain  ldy mus_ptr
+        lda music_freq_lo,y
+        sta mus_f_lo,x
+        lda music_freq_hi,y
+        sta mus_f_hi,x
+        rts
+
+;; music_tick - a tick of voice X's note.
+music_tick
+        lda mus_note,x
+        bne +
+        rts                     ; resting
++       lda mus_gate,x
+        beq +
+        dec mus_gate,x
+        bne +
+        ldy mus_inst,x          ; time to let go
+        lda in_wave,y
+        ldy mus_r
+        sta SID+4,y
++       lda mus_age,x
+        cmp #255
+        beq +
+        inc mus_age,x
++       lda mus_sl_t,x          ; a glide
+        beq _arp
+        dec mus_sl_t,x
+        lda mus_f_lo,x
+        clc
+        adc mus_sl_lo,x
+        sta mus_f_lo,x
+        lda mus_f_hi,x
+        adc mus_sl_hi,x
+        sta mus_f_hi,x
+        jmp _drop
+_arp    ldy mus_inst,x          ; a chord's next note
+        lda in_arp,y
+        beq _drop
+        inc mus_arp,x
+        jsr music_pitch
+_drop   ldy mus_inst,x          ; a bonk, a snap
+        lda in_drop_lo,y
+        ora in_drop_hi,y
+        beq _sweep
+        lda mus_f_lo,x
+        clc
+        adc in_drop_lo,y
+        sta mus_f_lo,x
+        lda mus_f_hi,x
+        adc in_drop_hi,y
+        sta mus_f_hi,x
+        lda in_drop_hi,y        ; (lda leaves the carry be)
+        bmi _neg
+        bcc _sweep              ; up, and not past the top
+        lda #$ff                ; past it: stay there
+        bne _clamp
+_neg    bcs _sweep              ; down, and not through zero
+        lda #0                  ; through it: stay at the bottom
+_clamp  sta mus_f_lo,x
+        sta mus_f_hi,x
+_sweep  lda mus_sweep,x         ; the pulse width, turning at the ends
+        beq _vib
+        bmi _down
+        clc
+        adc mus_pw_lo,x
+        sta mus_pw_lo,x
+        bcc _vib
+        inc mus_pw_hi,x
+        lda mus_pw_hi,x
+        cmp #$0e
+        bcc _vib
+        jmp _turn
+_down   clc
+        adc mus_pw_lo,x
+        sta mus_pw_lo,x
+        bcs _vib
+        dec mus_pw_hi,x
+        lda mus_pw_hi,x
+        cmp #$02
+        bcs _vib
+_turn   lda mus_sweep,x
+        eor #$ff
+        clc
+        adc #1
+        sta mus_sweep,x
+_vib    lda in_vstep,y          ; the vibrato, once the note has settled
+        beq _out
+        lda mus_age,x
+        cmp in_vdelay,y
+        bcc _out
+        lda mus_vb_st,x         ; step, sign-extended
+        bpl +
+        dec mus_vb_hi,x
++       clc
+        adc mus_vb_lo,x
+        sta mus_vb_lo,x
+        bcc +
+        inc mus_vb_hi,x
++       dec mus_vb_c,x
+        bne _out
+        lda in_vspeed,y         ; turn round
+        sta mus_vb_c,x
+        lda mus_vb_st,x
+        eor #$ff
+        clc
+        adc #1
+        sta mus_vb_st,x
+_out    ;; fall through
+
+;; music_out - the frequency, with the vibrato, and the pulse width.
+music_out
+        ldy mus_r
+        lda mus_f_lo,x
+        clc
+        adc mus_vb_lo,x
+        sta SID,y
+        lda mus_f_hi,x
+        adc mus_vb_hi,x
+        sta SID+1,y
+        lda mus_pw_lo,x
+        sta SID+2,y
+        lda mus_pw_hi,x
+        sta SID+3,y
+        rts
